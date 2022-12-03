@@ -7,6 +7,8 @@ This is a workflow that combines multiple software, mainly for whole genome anno
 
 The following tools are required. Some options and compatibilities might depend on the software version. We successfully ran the pipeline using the versions described below.
 
+    memba create -n anno maker
+
 - [augustus v.3.0.3](http://bioinf.uni-greifswald.de/augustus/)
 - [bedtools v.2.26.0](https://bedtools.readthedocs.io/en/latest/) 
 - [BLAST v.2.6.0+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
@@ -35,46 +37,6 @@ The following tools are required. Some options and compatibilities might depend 
 - [TransDecoder v.3.0.1](https://github.com/TransDecoder/TransDecoder/wiki)
 - [trimmomatic v.0.36](http://www.usadellab.org/cms/?page=trimmomatic)
 - [Trinity v.2.6.5](https://github.com/trinityrnaseq/trinityrnaseq/wiki)
-
-### Folder structure
-
-Most of the tools are assumed to be installed in the `PATH`. If not, the absolute `PATH` to the `Tools` directory is given.
-
-```bash
-2-Annotation
-├── 2_0-External_evidences
-│   ├── 2_0_1-Proteins
-│   └── 2_0_2-mRNAs
-│       ├── 2_0_2_1-External_databases
-│       ├── 2_0_2_2-RNAseq
-│       │   ├── 2_0_2_2_1-RNAseq_reads
-│       │   └── 2_0_2_2_2-RNAseq_assembly
-│       └── 2_0_2_3-IsoSeq
-│           ├── 2_0_2_3_1-IsoSeq_reads
-│           └── 2_0_2_3_2-IsoSeq_polishing
-├── 2_1-Training
-│   ├── 2_1_1-Training_set
-│   │   └── pasa_run.log.dir
-│   └── 2_1_2-Predictor_training
-│       ├── 2_1_2_1-Augustus
-│       ├── 2_1_2_2-Genemark
-│       └── 2_1_2_3-SNAP
-└── 2_2-Prediction
-    ├── 2_2_1-Repeats
-    ├── 2_2_2-
-    ├── 2_2_3-Prediction
-    │   ├── 2_2_3_1-BUSCO
-    │   ├── 2_2_3_2-Augustus
-    │   ├── 2_2_3_3-Genemark
-    │   ├── 2_2_3_4-SNAP
-    │   └── 2_2_3_5-PASA
-    ├── 2_2_4-Transcript_mapping
-    ├── 2_2_5-Protein_mapping
-    ├── 2_2_6-EVM
-    ├── 2_2_7-Annotation_polishing
-    ├── 2_2_8-Filtering
-    └── 2_2_9-Functional_annotation
-```
 
 ## Pipeline
 
