@@ -19,3 +19,4 @@ dependencies:
 - interproscan 
 - mafft 
 - blat
+- transdecoder
