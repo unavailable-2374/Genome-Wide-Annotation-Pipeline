@@ -1,0 +1,20 @@
+name: EDTA
+
+channels:
+  - bioconda
+  - defaults
+  
+- maker 
+- RepeatModeler2 
+- wise2 
+- PASA 
+- parafly 
+- busco 
+- hisat2 
+- stringtie 
+- cd-hit 
+- genometools-genometools 
+- gffread 
+- hmmer 
+- interproscan 
+- mafft 
