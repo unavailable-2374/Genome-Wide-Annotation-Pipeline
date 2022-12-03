@@ -40,12 +40,23 @@ The following tools are required. Some options and compatibilities might depend 
 
 1.Download the latest Pipeline:
 
-    git clone 
+    git clone https://github.com/unavailable-2374/Genome-Wide-annotation-pipeline.git
+    
+2.Install
     
 If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
 
     mamba env create -f anno_tools.yml
     conda activate anno_tools
+    
+ Manual installation section. 
+  Download and cat PFAM_dabase
+    
+    wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz 
+    wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-B.hmm.gz 
+    gzip -dc Pfam-A.hmm.gz > Pfam-AB.hmm
+    gzip -dc Pfam-B.hmm.gz >> Pfam-AB.hmm
+
 
 ## Pipeline
 
