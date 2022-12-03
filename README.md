@@ -5,7 +5,7 @@ This is a workflow that combines multiple software, mainly for whole genome anno
 
 ### Tools
 
-The following tools are required. Some options and compatibilities might depend on the software version. We successfully ran the pipeline using the versions described below.
+The following tools are required. Some options and compatibilities might depend on the software version. 
 
 - [augustus v.3.0.3](http://bioinf.uni-greifswald.de/augustus/)
 - [bedtools v.2.26.0](https://bedtools.readthedocs.io/en/latest/) 
@@ -14,24 +14,22 @@ The following tools are required. Some options and compatibilities might depend 
 - [busco v.3.0.2](https://busco.ezlab.org/)
 - [cd-hit V4.8.1](https://github.com/weizhongli/cdhit/releases/download/)
 - [exonerate v.2.2.0](https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate-manual)
-- [fastqc v.0.10.1](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 - [genemark v.3.47](http://exon.gatech.edu/GeneMark/)
 - [genewise v2.4.1](http://www.ebi.ac.uk/~birney/wise2/)
-- [genometools V1.5.9](http://genometools.org/pub/)
+- [genometools V.1.5.9](http://genometools.org/pub/)
 - [geta V2.44](https://github.com/chenlianfu/geta)
-- [gffcompare v.0.10.1](https://ccb.jhu.edu/software/stringtie/gffcompare.shtml)
 - [gffread](http://ccb.jhu.edu/software/stringtie/gff.shtml)
 - [hisat2 v.2.0.5](https://ccb.jhu.edu/software/hisat2/manual.shtml)
-- [HMMER V3.3.2](http://eddylab.org/software/hmmer/)
-- [interproscan v.5.28-67.0](https://www.ebi.ac.uk/interpro/search/sequence/)
-- [mafft V7.407](https://mafft.cbrc.jp/alignment/software/)
-- [magicblast v.1.4.0](https://ncbi.github.io/magicblast/)
+- [HMMER V.3.3.2](http://eddylab.org/software/hmmer/)
+- [interproscan V.5.28-67.0](https://www.ebi.ac.uk/interpro/search/sequence/)
+- [mafft V.7.407](https://mafft.cbrc.jp/alignment/software/)
+- [magicblast V.1.4.0](https://ncbi.github.io/magicblast/)
 - [maker v.2.31.9](https://www.yandell-lab.org/software/maker.html)
 - [PASA v.2.3.3](https://github.com/PASApipeline/PASApipeline/wiki)
 - [Pfam database](https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/)
 - [parafly r2013-01-21](https://sourceforge.net/projects/parafly/files/)
 - [RepeatMasker v.open-4.0.6](http://www.repeatmasker.org/)
-- [RepeatModeler - 2.0.1](http://www.repeatmasker.org/RepeatModeler/)
+- [RepeatModeler V.2.0.1](http://www.repeatmasker.org/RepeatModeler/)
 - [samtools v.1.7](http://www.htslib.org/)
 - [SNAP v.2006-07-28](https://github.com/KorfLab/SNAP)
 - [stringtie v.1.3.4d](https://ccb.jhu.edu/software/stringtie/)
@@ -40,12 +38,14 @@ The following tools are required. Some options and compatibilities might depend 
 
 ## Software Installation 
 
+1.Download the latest Pipeline:
+
+    git clone 
+    
 If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
 
-    memba create -n anno_tools -c bioconda maker RepeatModeler2 wise2 PASY
+    mamba env create -f anno_tools.yml
     conda activate anno_tools
-
-    
 
 ## Pipeline
 
