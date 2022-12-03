@@ -1,9 +1,9 @@
 name: EDTA
 
 channels:
-  - bioconda
-  - defaults
-  
+ - bioconda
+ - defaults
+dependencies:
 - maker 
 - RepeatModeler2 
 - wise2 
