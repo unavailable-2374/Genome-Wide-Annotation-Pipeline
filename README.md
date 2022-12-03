@@ -1,8 +1,5 @@
-# Genome-Wide-annotation-pipeline
+# Zhou Lab @ AG IS Genome-Wide-annotation-pipeline
 This is a workflow that combines multiple software, mainly for whole genome annotation of eukaryotes.
-# Zhou Lab @ AG IS - Annotation Pipeline - multiple combined 
-
-> This Git repository contains the whole pipeline used to generate the structural and functional gene annotation of a grape genome. The pipeline for the assembly of the genome of interest is not included here but is a prerequisite.
 
 ## Requirements
 
