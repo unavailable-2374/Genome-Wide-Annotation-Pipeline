@@ -18,3 +18,4 @@ dependencies:
 - hmmer 
 - interproscan 
 - mafft 
+- blat
