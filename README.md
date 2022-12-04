@@ -105,7 +105,6 @@ install geta
                             maker_only:run maker 2 times
                             maker_geta:run maker 2 times and combined geta's result
         Version: 1.0
-        USAGE
 
 ## References
 
