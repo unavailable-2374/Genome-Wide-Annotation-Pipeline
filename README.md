@@ -37,11 +37,11 @@ The following tools are required. Some options and compatibilities might depend 
 
 ## Software Installation 
 
-1.Download the latest Pipeline:
+### 1.Download the latest Pipeline:
 
     git clone https://github.com/unavailable-2374/Genome-Wide-annotation-pipeline.git
     
-2.Install
+### 2.Install
     
 If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
 
@@ -50,14 +50,14 @@ If you do not have much experience in compiling software, it is recommended to u
     
  Manual installation section. 
  
-  # Download and cat PFAM_dabase
+  #### Download and cat PFAM_dabase
     
     wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz 
     wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-B.hmm.gz 
     gzip -dc Pfam-A.hmm.gz > Pfam-AB.hmm
     gzip -dc Pfam-B.hmm.gz >> Pfam-AB.hmm
     
-  # install geta
+  #### install geta
   
     git https://github.com/chenlianfu/geta.git
     echo 'PATH=/absolute_path/geta/bin ' >> ~/.bashrc
