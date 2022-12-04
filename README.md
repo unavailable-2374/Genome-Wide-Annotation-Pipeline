@@ -1,4 +1,4 @@
-# Zhou Lab @ AG IS Genome-Wide-annotation-pipeline
+# Zhou Lab @ AGIS Genome-Wide-annotation-pipeline
 This is a workflow that combines multiple software, mainly for whole genome annotation of eukaryotes.
 
 ## Requirements
