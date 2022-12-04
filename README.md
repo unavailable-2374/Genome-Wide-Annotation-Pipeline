@@ -37,11 +37,11 @@ The following tools are required. Some options and compatibilities might depend 
 
 ## Software Installation 
 
-#1.Download the latest Pipeline:
+1.Download the latest Pipeline:
 
     git clone https://github.com/unavailable-2374/Genome-Wide-annotation-pipeline.git
     
-#2.Install
+2.Install
     
 If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
 
@@ -61,6 +61,8 @@ If you do not have much experience in compiling software, it is recommended to u
   
     git https://github.com/chenlianfu/geta.git
     echo 'PATH=/absolute_path/geta/bin ' >> ~/.bashrc
+    
+3.Usage
 
 
 ## References
