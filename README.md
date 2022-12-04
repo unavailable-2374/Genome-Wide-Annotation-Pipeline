@@ -64,7 +64,46 @@ install geta
     
 ## Usage
 
-''
+        Usage:
+            perl $0 [options]
+        For example:
+            perl $0 --genome genome.fasta -1 rna_1.1.fq.gz,rna_2.1.fq.gz -2 rna_1.2.fq.gz,rna_2.2.fq.gz --protein homolog.fasta --out_prefix out --cpu 80 --gene_prefix Vitis --Pfam_db /PATH-to/Pfam-AB.hmm
+        Parameters:
+        [General]
+            --genome <string>     Required
+            genome file in fasta format.
+            -1 <string> -2 <string>    Required
+            fastq format files contain of paired-end RNA-seq data. if you have data come from multi librarys, input multi fastq files separated by comma. the compress file format .gz also can be accepted.
+            --protein <string>    Required
+            homologous protein sequences (derived from multiple species would be recommended) file in fasta format.
+            --augustus_species <string>    Required when --use_existed_augustus_species were not provided
+            species identifier for Augustus. the relative hmm files of augustus training will be created with this prefix. if the relative hmm files of augustus training exists, the program will delete the hmm files directory firstly, and then start the augustus training steps.
+           [other]
+            --out_prefix <string>    default: out
+            the prefix of outputs.
+            --use_existed_augustus_species <string>    Required when --augustus_species were not provided
+            species identifier for Augustus. This parameter is conflict with --augustus_species. When this parameter set, the --augustus_species parameter will be invalid, and the relative hmm files of augustus training should exists, and the augustus training step will be skipped (this will save lots of runing time).
+            --RM_species <string>    default: None
+            species identifier for RepeatMasker. The acceptable value of this parameter can be found in file $dirname/RepeatMasker_species.txt. Such as, Eukaryota for eucaryon, Fungi for fungi, Viridiplantae for plants, Metazoa for animals. The repeats in genome sequences would be searched aganist the Repbase database when this parameter set. 
+            --RM_lib <string>    default: None
+            A fasta file of repeat sequences. Generally to be the result of RepeatModeler. If not set, RepeatModeler will be used to product this file automaticly, which shall time-consuming.
+            --augustus_species_start_from <string>    default: None
+            species identifier for Augustus. The optimization step of Augustus training will start from the parameter file of this species, so it may save much time when setting a close species.
+            --cpu <int>    default: 4
+            the number of threads.
+            --strand_specific    default: False
+            enable the ability of analysing the strand-specific information provided by the tag "XS" from SAM format alignments. If this parameter was set, the paramter "--rna-strandness" of hisat2 should be set to "RF" usually.
+            --Pfam_db <string>    default: None
+            the absolute path of protein family HMM database which was used for filtering of false positive gene models. multiple databases can be input, and the prefix of database files should be seperated by comma.
+            --gene_prefix <string>    default: gene
+            the prefix of gene id shown in output file.
+            --alt_splice <numeric> [0|1] Take extra steps to try and find alternative splicing, 1 = yes, 0 = no
+            --step [all|maker_only|maker_geta] Specify which steps you want to run the pipe.
+                            all:run the entire pipeline (default)
+                            maker_only:run maker 2 times
+                            maker_geta:run maker 2 times and combined geta's result
+        Version: 1.0
+        USAGE
 
 ## References
 
