@@ -1,7 +1,7 @@
 # Zhou Lab @ AGIS Genome-Wide-annotation-pipeline
 This is a workflow that combines multiple software, mainly for whole genome annotation of eukaryotes.
 
-<img width="600" alt="The GWAP workflow" src="https://github.com/unavailable-2374/Genome-Wide-annotation-pipeline/blob/main/img/easy_model.png?raw=true">
+<img width="600" alt="The GWAP workflow" src="https://github.com/unavailable-2374/Genome-Wide-annotation-pipeline/blob/main/img/easy_model.png?raw=true" style="display: inline-block; vertical-align: middle;">
 
 ## Requirements
 
