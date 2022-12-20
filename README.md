@@ -46,7 +46,8 @@ The following tools are required. Some options and compatibilities might depend 
 ### 2.Install
     
 #### If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
-
+   
+    cd Genome-Wide-annotation-pipeline
     mamba env create -f anno_tools.yml
     conda activate anno_tools
     
@@ -58,11 +59,6 @@ The following tools are required. Some options and compatibilities might depend 
     wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-B.hmm.gz 
     gzip -dc Pfam-A.hmm.gz > Pfam-AB.hmm
     gzip -dc Pfam-B.hmm.gz >> Pfam-AB.hmm
-    
-install geta
-  
-    git https://github.com/chenlianfu/geta.git
-    echo 'PATH=/absolute_path/geta/bin ' >> ~/.bashrc
     
 ## Usage
 
