@@ -105,26 +105,3 @@ install geta
                             maker_only:run maker 2 times
                             maker_geta:run maker 2 times and combined geta's result
         Version: 1.0
-
-## References
-
-- **Andrews S** (2014) FastQC: A Quality Control tool for High Throughput Sequence Data. 
-- **Au KF, Underwood JG, Lee L, Wong WH** (2012) Improving PacBio Long Read Accuracy by Short Read Alignment. PLoS ONE **7**: e46679
-- **Bolger AM, Lohse M, Usadel B** (2014) Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics **30**: 2114–2120
-- **Boratyn GM, Thierry-Mieg J, Thierry-Mieg D, Busby B, Madden TL** (2019) Magic-BLAST, an accurate RNA-seq aligner for long and short reads. BMC Bioinformatics **20**: 405
-- **Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL** (2009) BLAST+: architecture and applications. BMC Bioinformatics. doi: 10.1186/1471-2105-10-421
-- **Cantarel BL, Korf I, Robb SMC, Parra G, Ross E, Moore B, Holt C, Sanchez Alvarado A, Yandell M** (2007) MAKER: An easy-to-use annotation pipeline designed for emerging model organism genomes. Genome Research **18**: 188–196
-- **Haas BJ** (2003) Improving the Arabidopsis genome annotation using maximal transcript alignment assemblies. Nucleic Acids Research **31**: 5654–5666
-- **Jones P, Binns D, Chang H-Y, Fraser M, Li W, McAnulla C, McWilliam H, Maslen J, Mitchell A, Nuka G, Pesseat S, Quinn AF, Sangrador-Vegas A, Scheremetjew M, Yong S-Y, Lopez R, Hunter S** (2014) InterProScan 5: genome-scale protein function classification. Bioinformatics **30**: 1236–1240
-- **Kim D, Langmead B, Salzberg SL** (2015) HISAT: a fast spliced aligner with low memory requirements. Nat Methods **12**: 357–60
-- **Korf I** (2004) Gene finding in novel genomes. BMC Bioinformatics. doi: 10.1186/1471-2105-5-59
-- **Li H, Handsaker B, Wysoker A, Fennell T, Ruan J, Homer N, Marth G, Abecasis G, Durbin R, 1000 Genome Project Data Processing Subgroup** (2009) The Sequence Alignment/Map format and SAMtools. Bioinformatics **25**: 2078–2079
-- **Lomsadze A** (2005) Gene identification in novel eukaryotic genomes by self-training algorithm. Nucleic Acids Research **33**: 6494–6506
-- **Pertea M, Pertea GM, Antonescu CM, Chang T-C, Mendell JT, Salzberg SL** (2015) StringTie enables improved reconstruction of a transcriptome from RNA-seq reads. Nat Biotechnol **33**: 290–295
-- **Quinlan AR, Hall IM** (2010) BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics **26**: 841–842
-- **Seppey M, Manni M, Zdobnov EM** (2019) BUSCO: Assessing Genome Assembly and Annotation Completeness. *In* M Kollmar, ed, Gene Prediction: Methods and Protocols. Springer New York, New York, NY, pp 227–245
-- **Slater G, Birney E** (2005) Automated generation of heuristics for biological sequence comparison. BMC Bioinformatics. doi: 10.1186/1471-2105-6-31
-- **Smit, AFA, Hubley, R, Green, P** (2013) RepeatMasker Open-4.0. 
-- **Stanke M, Keller O, Gunduz I, Hayes A, Waack S, Morgenstern B** (2006) AUGUSTUS: ab initio prediction of alternative transcripts. Nucleic Acids Research **34**: W435–W439
-- **W. James Kent** (2002) BLAT : The Blast-Like Alignment Tool. Genome Res **12**: 656–664
-- **Wu TD, Watanabe CK** (2005) GMAP: a genomic mapping and alignment program for mRNA and EST sequences. Bioinformatics **21**: 1859–1875
