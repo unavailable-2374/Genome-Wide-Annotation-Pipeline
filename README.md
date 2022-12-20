@@ -99,9 +99,8 @@ The following tools are required. Some options and compatibilities might depend 
             all:run the entire pipeline (default)
             maker_only:run maker 2 times
             geta_only:use GETA Pipeline to anntate the genome
-
-    --polish [on/off] default:on
-    use PASA to polish 
-
-    --help|-h Display this help info
-        Version: 1.0
+            --polish [on/off] default:on
+            use PASA to polish 
+            --help|-h Display this help info
+            
+            Version: 1.0
