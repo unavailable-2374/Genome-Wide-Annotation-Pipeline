@@ -95,9 +95,13 @@ The following tools are required. Some options and compatibilities might depend 
             the absolute path of protein family HMM database which was used for filtering of false positive gene models. multiple databases can be input, and the prefix of database files should be seperated by comma.
             --gene_prefix <string>    default: gene
             the prefix of gene id shown in output file.
-            --alt_splice <numeric> [0|1] Take extra steps to try and find alternative splicing, 1 = yes, 0 = no
-            --step [all|maker_only|maker_geta] Specify which steps you want to run the pipe.
-                            all:run the entire pipeline (default)
-                            maker_only:run maker 2 times
-                            maker_geta:run maker 2 times and combined geta's result
+            --step [all|maker_only|geta_only] Specify which steps you want to run the pipe.
+            all:run the entire pipeline (default)
+            maker_only:run maker 2 times
+            geta_only:use GETA Pipeline to anntate the genome
+
+    --polish [on/off] default:on
+    use PASA to polish 
+
+    --help|-h Display this help info
         Version: 1.0
