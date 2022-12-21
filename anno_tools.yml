@@ -5,7 +5,7 @@ channels:
  - defaults
 dependencies:
 - maker 
-- RepeatModeler2 
+- RepeatModeler
 - wise2 
 - PASA 
 - parafly 
