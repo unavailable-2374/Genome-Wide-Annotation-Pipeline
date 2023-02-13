@@ -421,12 +421,9 @@ unless (-e "2.hisat2.ok") {
     my $input;
     if ($pe1 && $pe2) {
         my (@input_pe1, @input_pe2, $input_pe1, $input_pe2);
-        #foreach ( @paired_end_reads_prefix ) {
-        for(my $s=1;$s<=12;$s++){
-            my $ss=sprintf("%02d",$s);
-            my $name="reads".$ss;
-            push @input_pe1, "../1.trimmomatic/$name.1.fastq";
-            push @input_pe2, "../1.trimmomatic/$name.2.fastq";
+        foreach ( @paired_end_reads_prefix ) {
+            push @input_pe1, "../1.trimmomatic/$_.1.fastq";
+            push @input_pe2, "../1.trimmomatic/$_.2.fastq";
         }
         $input_pe1 = join ",", @input_pe1;
         $input_pe2 = join ",", @input_pe2;
