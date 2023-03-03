@@ -7,16 +7,14 @@ dependencies:
 - maker 
 - RepeatModeler
 - wise2 
-- PASA 
+- PASA
 - parafly 
 - busco 
 - hisat2 
 - stringtie 
-- cd-hit 
 - genometools-genometools 
 - gffread 
 - hmmer 
-- interproscan 
 - mafft 
 - blat
 - transdecoder
