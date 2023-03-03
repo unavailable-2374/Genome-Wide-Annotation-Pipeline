@@ -96,7 +96,7 @@ GetOptions(
 );
 if ($help){die $usage}
 # 检测依赖的软件是否满足。
-#&detecting_dependent_softwares();
+&detecting_dependent_softwares();
 # 参数设置
 $genome = abs_path($genome);
 die "No genome fasta input\n" unless $genome;
