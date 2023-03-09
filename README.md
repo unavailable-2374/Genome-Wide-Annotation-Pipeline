@@ -63,7 +63,7 @@ The following tools are required. Some options and compatibilities might depend 
 ## Usage
 
         Usage:
-            perl run_annotate.pl [options]
+            perl GWAP.pl [options]
         For example:
             perl run_annotate.pl --genome genome.fasta -1 rna_1.1.fq.gz,rna_2.1.fq.gz -2 rna_1.2.fq.gz,rna_2.2.fq.gz --protein homolog.fasta --out_prefix out --cpu 80 --gene_prefix Vitis --Pfam_db /PATH-to/Pfam-AB.hmm
         Parameters:
