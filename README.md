@@ -50,7 +50,7 @@ The following tools are required. Some options and compatibilities might depend 
     cd Genome-Wide-annotation-pipeline
     export /PATH/TO/bin >> ~/.bashrc
     mamba env create -f anno_tools.yml
-    conda activate anno_tools
+    conda activate GWAP
     
 #### Manual installation section. 
  
