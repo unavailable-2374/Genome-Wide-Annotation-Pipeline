@@ -5,7 +5,7 @@ use Getopt::Long;
 
 my $usage = <<USAGE;
 Usage:
-    perl $0 [options] augustus.gff3 transfrag.gff3 genewise.gff3 intron.gff
+    perl $0 [options] augustus.gff3 transfrag.gff3 genewise.gff3 maker.gff3 intron.gff
 
     程序将数据按染色体和正负链进行分割，然后使用Paraly并行化调用combineGeneModels命令进行基因预测结果的整合。
 
@@ -79,8 +79,19 @@ while (<IN>) {
     $genewise{$_[0]}{$_[6]} .= $_;
 }
 close IN;
-
+ 
 open IN, $ARGV[3] or die $!;
+my %maker;
+while (<IN>) {
+    next if m/^#/;
+    next if m/^\s*$/;
+    @_ = split /\t/;
+    $chr{$_[0]} = 1;
+    $maker{$_[0]}{$_[6]} .= $_;
+}
+close IN;
+
+open IN, $ARGV[4] or die $!;
 my %intron;
 while (<IN>) {
     next if m/^#/;
@@ -124,6 +135,13 @@ foreach my $chr (sort keys %chr) {
     print OUT $genewise{$chr}{"-"};
     close OUT;
 
+    open OUT, ">", "combineGeneModels_tmp/${chr}_plus_maker.gff3" or die $!;
+    print OUT $maker{$chr}{"+"};
+    close OUT;
+    open OUT, ">", "combineGeneModels_tmp/${chr}_minus_maker.gff3" or die $!;
+    print OUT $maker{$chr}{"-"};
+    close OUT;
+
     open OUT, ">", "combineGeneModels_tmp/${chr}_plus_intron.gff" or die $!;
     print OUT $intron{$chr}{"+"};
     close OUT;
@@ -131,8 +149,8 @@ foreach my $chr (sort keys %chr) {
     print OUT $intron{$chr}{"-"};
     close OUT;
 
-    print CMD "$cmd_name combineGeneModels_tmp/${chr}_plus_augustus.gff3 combineGeneModels_tmp/${chr}_plus_transfrag.gff3 combineGeneModels_tmp/${chr}_plus_genewise.gff3 combineGeneModels_tmp/${chr}_plus_intron.gff > combineGeneModels_tmp/${chr}_plus.1.gff3 2> combineGeneModels_tmp/${chr}_plus.2.gff3\n";
-    print CMD "$cmd_name combineGeneModels_tmp/${chr}_minus_augustus.gff3 combineGeneModels_tmp/${chr}_minus_transfrag.gff3 combineGeneModels_tmp/${chr}_minus_genewise.gff3 combineGeneModels_tmp/${chr}_minus_intron.gff > combineGeneModels_tmp/${chr}_minus.1.gff3 2> combineGeneModels_tmp/${chr}_minus.2.gff3\n";
+    print CMD "$cmd_name combineGeneModels_tmp/${chr}_plus_augustus.gff3 combineGeneModels_tmp/${chr}_plus_transfrag.gff3 combineGeneModels_tmp/${chr}_plus_genewise.gff3 combineGeneModels_tmp/${chr}_plus_maker.gff3 combineGeneModels_tmp/${chr}_plus_intron.gff > combineGeneModels_tmp/${chr}_plus.1.gff3 2> combineGeneModels_tmp/${chr}_plus.2.gff3\n";
+    print CMD "$cmd_name combineGeneModels_tmp/${chr}_minus_augustus.gff3 combineGeneModels_tmp/${chr}_minus_transfrag.gff3 combineGeneModels_tmp/${chr}_minus_genewise.gff3 combineGeneModels_tmp/${chr}_minus_maker.gff3 combineGeneModels_tmp/${chr}_minus_intron.gff > combineGeneModels_tmp/${chr}_minus.1.gff3 2> combineGeneModels_tmp/${chr}_minus.2.gff3\n";
 
     push @out_name, "combineGeneModels_tmp/${chr}_plus";
     push @out_name, "combineGeneModels_tmp/${chr}_minus";
