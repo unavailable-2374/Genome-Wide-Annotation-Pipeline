@@ -48,7 +48,7 @@ The following tools are required. Some options and compatibilities might depend 
 #### If you do not have much experience in compiling software, it is recommended to use conda to complete most of the software installation.
    
     cd Genome-Wide-annotation-pipeline
-    export /PATH/TO/bin >> ~/.bashrc
+    export PATH=/PATH/TO/bin >> ~/.bashrc
     mamba env create -f anno_tools.yml
     conda activate GWAP
     
