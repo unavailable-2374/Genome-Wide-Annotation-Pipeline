@@ -21,3 +21,4 @@ dependencies:
 - transdecoder
 - bedtools
 - samtools
+- ninja
