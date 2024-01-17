@@ -2,6 +2,7 @@ name: WGAP
 
 channels:
  - bioconda
+ - conda-forge
  - defaults
 dependencies:
 - maker 
