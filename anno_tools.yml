@@ -19,3 +19,5 @@ dependencies:
 - mafft 
 - blat
 - transdecoder
+- bedtools
+- samtools
