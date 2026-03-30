@@ -23,7 +23,10 @@ TruSeq3-PE-2.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:50 TOPHRE
 --min_protein_length 100 --genetic_code 1
 
 [homolog_prediction]
---identity 0.2 --evalue 1e-9 --homolog_coverage 0.3 --max_hits_num_per_match_region 10 --max_hit_num_per_single_species 2 --method all --threshod_ratio_of_intron_Supported_times 0.0
+--method miniprot --outs 0.95 --min_coverage 0.4 --min_identity 0.2
+# miniprot parameters: --outs controls output score threshold (0.0-1.0)
+# --min_coverage: minimum protein coverage to keep alignment
+# --min_identity: minimum protein identity to keep alignment
 
 [GFF3_merging_and_removing_redundancy]
 --intron_score 0.3 --complete5p_score 0.5 --complete3p_score 0.5 --first_file_score 0.5 --overlap_coverage 0.3
@@ -53,3 +56,19 @@ TruSeq3-PE-2.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:50 TOPHRE
 
 [GFF3_database_validation]
 --hmm_evalue1 1e-5 --hmm_evalue2 1e-3 --hmm_length 80 --hmm_coverage 0.25 --blast_evalue 1e-9 --blast_CIP 0.4 --blast_coverage 0.4 --hmm_evalue_onlyOne 1e-7 --hmm_coverage_onlyOne 0.5 --blast_evalue_onlyOne 1e-12 --blast_CIP_onlyOne 0.6 --blast_coverage_onlyOne 0.6
+
+# Long-read transcript prediction parameters (for LongReads_prediction)
+[LongReads_prediction]
+--min_transcript_length 200 --min_orf_length 300
+
+# IsoQuant parameters
+[IsoQuant]
+--complete_genedb --no_model_construction
+
+# SQANTI3 filter parameters
+[SQANTI3_filter]
+--min_cov 3
+
+# miniprothint parameters
+[miniprothint]
+--score_threshold 0.4

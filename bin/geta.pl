@@ -13,24 +13,42 @@ my $usage_chinese = <<USAGE;
 
 GETA (Genome-wide Electronic Tool for Annotation) 是一个对全基因组序列进行基因预测的流程软件。输入基因组序列、转录组二代测序原始数据和临近物种全基因组蛋白序列，即可一个命令快速得到准确的基因组注释GFF3结果文件。本流程的两大特色：（1）预测准确，程序输出结果中基因数量正常、BUSCO检测的完整性高、基因模型的exon边界准确；（2）运行简单，一个命令全自动化运行得到最终结果。
 
-软件当前版本：2.7.1。
+软件当前版本：3.0.0。
 
 Usage:
     perl $0 [options]
 
 For example:
-    perl $0 --genome genome.fasta --RM_species_Dfam Embryophyta --RM_species_RepBase Embryophyta --pe1 libA.1.fq.gz,libB.1.fq.gz --pe2 libA.2.fq.gz,libB.2.fq.gz --protein homolog.fasta --augustus_species GETA_genus_species --HMM_db /opt/biosoft/bioinfomatics_databases/Pfam/PfamA,/opt/biosoft/bioinfomatics_databases/Pfam/PfamB --config /opt/biosoft/geta/conf_for_big_genome.txt --out_prefix out --gene_prefix GS01Gene --cpu 120
+    perl $0 --genome genome.fasta --RM_species_Dfam Embryophyta --long_reads long_reads.fq.gz --pe1 libA.1.fq.gz,libB.1.fq.gz --pe2 libA.2.fq.gz,libB.2.fq.gz --protein homolog.fasta --augustus_species GETA_genus_species --HMM_db /opt/biosoft/bioinfomatics_databases/Pfam/PfamA,/opt/biosoft/bioinfomatics_databases/Pfam/PfamB --config /opt/biosoft/geta/conf_for_big_genome.txt --out_prefix out --gene_prefix GS01Gene --cpu 120
 
 Parameters:
 [INPUT]
     --genome <string>    default: None, required
-    输入需要进行注释的基因组序列FASTA格式文件。当输入了屏蔽重复序列的基因组文件时，可以不使用--RM_species_Dfam、--RM_species_RepBase和--RM_lib参数，并添加--no_RepeatModeler参数，从而跳过重复序列分析与屏蔽步骤。此时，推荐再输入FASTA文件中仅对转座子序列使用碱基N进行硬屏蔽，对简单重复或串联重复使用小写字符进行软屏蔽。
+    输入需要进行注释的基因组序列FASTA格式文件。当输入了屏蔽重复序列的基因组文件时，可以不使用--RM_species_Dfam和--RM_lib参数，并添加--no_RepeatModeler参数，从而跳过重复序列分析与屏蔽步骤。此时，推荐再输入FASTA文件中仅对转座子序列使用碱基N进行硬屏蔽，对简单重复或串联重复使用小写字符进行软屏蔽。
 
     --RM_species_Dfam | --RM_species <string>    default: None
     输入一个物种或分类名称，以利于调用RepeatMasker程序运用Dfam数据库中相应物种分类的HMM数据信息进行重复序列分析。可以根据文件$software_dir/RepeatMasker_lineage.txt的内容查找适用于本参数的物种分类名称。例如，设置Eukaryota适合真核生物、Viridiplantae适合植物、Metazoa适合动物、Fungi适合真菌。当使用了该参数，需要先安装好RepeatMasker软件并配置好Dfam数据库。需要注意的是：Dfam数据库因为较大被分隔成了9份；而RepeatMasker默认仅带有Dfam数据库第0个root部分，适合哺乳动物或真菌等物种；若有需要，则考虑下载适合待分析物种的Dfam数据库并配置到RepeatMasker；例如，对植物物种进行分析则需要使用Dfam数据库第5个Viridiplantae部分，对膜翅目昆虫进行分析则需要使用Dfam数据库第7个Hymenoptera部分。
 
-    --RM_species_RepBase <string>    default: None
-    输入一个物种名称，运用调用RepeatMasker程序运用RepBase数据库中相应物种分类的重复核酸序列信息进行重复序列分析。可以根据文件$software_dir/RepeatMasker_lineage.txt的内容查找适用于本参数的物种分类名称。例如，设置Eukaryota适合真核生物、Viridiplantae适合植物、Metazoa适合动物、Fungi适合真菌。当输入了该参数，需要先安装好RepeatMasker软件并配置好RepBase数据库。需要注意的是：RepBase数据库最后一个版本20181026已经较老，且其包含的重复序列数据量较少；RepBase也不再提供免费下载。
+    --long_reads <string>    default: None
+    输入三代长读长转录组测序数据文件（FASTQ或FASTA格式）。支持PacBio HiFi、PacBio CLR和Oxford Nanopore等类型的长读长数据。当提供了长读长数据时，程序将使用minimap2进行比对，并通过IsoQuant进行转录本重建和基因预测。长读长数据可以单独使用，也可以与二代短读长数据联合使用以获得更好的结果。
+
+    --long_read_type <string>    default: pacbio_hifi
+    设置长读长数据的类型。可选值为pacbio_hifi、pacbio_clr或nanopore。该参数用于优化minimap2和IsoQuant的比对和分析参数。
+
+    --aligner <string>    default: star
+    设置二代短读长数据的比对工具。可选值为star或hisat2。STAR比对速度更快且准确性更高，但需要更多内存。
+
+    --TE_annotator <string>    default: repeatmodeler
+    设置转座子注释工具。可选值为repeatmodeler或edta。EDTA能提供更全面的转座子注释，但运行时间更长。
+
+    --enable_psauron    default: None
+    添加该参数后，使用PSAURON对基因模型进行质量评分。
+
+    --enable_eggnog    default: None
+    添加该参数后，使用eggNOG-mapper对预测的蛋白质进行功能注释。
+
+    --enable_ncrna    default: None
+    添加该参数后，使用tRNAscan-SE和Infernal进行非编码RNA注释。
 
     --RM_lib <string>    default: None
     输入一个FASTA格式文件，运用其中的重复序列数据信息进行全基因组重复序列分析。该文件往往是RepeatModeler软件对全基因组序列进行分析的结果，表示全基因组上的重复序列。GETA软件默认会调用RepeatModeler对全基因组序列进行分析，得到物种自身的重复序列数据库后，再调用RepeatMakser进行重复序列分析。当添加该参数后，则程序跳过费时的RepeatModler步骤，能极大减少程序运行时间。此外，程序支持--RM_species_Dfam、--RM_species_RepBase和--RM_lib参数同时使用，则依次使用多种方法进行重复序列分析，最终能合并多个结果并认可任一方法的结果。
@@ -66,7 +84,7 @@ Parameters:
     输入一个参数配置文件路径，用于设置本程序调用的其它命令的详细参数。若不设置该参数，当基因组>1GB时，自动使用软件安装目录中的conf_for_big_genome.txt配置文件；当基因组<50MB时，自动使用软件安装目录中的conf_for_small_genome.txt配置文件；当基因组在50MB~1GB之间时，使用默认参数配置。此外，当软件预测的基因数量异常时往往要修改基因模型的过滤阈值。此时，通过修改软件安装目录中的conf_all_defaults.txt文件内容生成新的配置文件，并输入给本参来再次运行GETA流程。
 
     --BUSCO_lineage_dataset <string>    default: None
-    输入BUSCO数据库路径，则程序额外对基因预测得到的全基因组蛋白序列进行BUSCO分析。本参数支持输入多个BUSCO数据库路径，使用逗号进行分隔，则分别利用多个数据库进行分析。可以根据$software_dir/BUSCO_lineages_list.2021-12-14.txt文件内容选择合适的BUSCO数据库。BUSCO的结果输出到7.output_gene_models子目录下和gene_prediction.summary文件中。
+    输入BUSCO lineage数据集名称，则程序额外使用compleasm对基因预测得到的全基因组蛋白序列进行完整性分析。本参数支持输入多个数据集名称，使用逗号进行分隔。compleasm的结果输出到6.output_gene_models子目录下和gene_prediction.summary文件中。
 
 [OUTPUT]
     --out_prefix <string>    default: out
@@ -97,15 +115,6 @@ Parameters:
     --genetic_code <int>    default: 1
     设置遗传密码。该参数对应的值请参考NCBI Genetic Codes: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi。本参数主要生效于同源蛋白进行基因预测的步骤，或对基因模型首尾进行强制补齐时使用的起始密码子和终止密码子信息的情形。
 
-    --homolog_prediction_method <string>    default: all
-    设置使用同源蛋白进行基因预测的方法。其值可以设定为exonerate、genewise、gth或all。若想使用多种方法进行分析，则输入使用逗号分割的多个值；若使用所有三种方法进行分析，可以设置--method参数值为all。使用的方法越多，越消耗计算时间，但结果更好。三种方法中：exonerate和genewise的准确性结果比较一致（），但gth方法预测基因模型的sensitivity下降很多，specificity提高很多。以三种方法对Oryza sativa基因组的预测为例，其预测结果的准确性如下表所示。和NCBI上标准的共28736个基因模型的注释结果进行比较，评估四个准确性值：基因水平sensitivity、基因水平specificity、exon水平sensitivity、exon水平specificity。可以看出，使用多种方法进行基因预测、合并结果后再过滤，得到的基因模型数量能接近真实的基因数量，且结果较准确。此外，使用本参数的优先级更高，能覆盖--config指定参数配置文件中homolog_prediction的参数值。
-    方法       基因数量    gene_sensitivity    gene_specificity    exon_sensitivity    exon_specificity
-    exonerate  31310       46.17%              42.37%              62.15%              78.45%
-    genewise   32407       46.47%              41.21%              64.66%              77.15%
-    gth        9116        20.52%              64.70%              32.71%              90.87%
-    all        32293       48.19%              42.89%              66.91%              78.00%
-    filtered   23857       45.19%              54.44%              64.44%              83.72%
-
     --optimize_augustus_method <int>    default: 3
     设置AUGUSTUS Training时的参数优化方法。1，表示仅调用BGM2AT.optimize_augustus进行优化，能充分利用所有CPU线程对所有参数并行化测试，速度快；2，表示仅调用AUGUSTUS软件自带的optimize_augustus.pl程序进行优化，该方法的速度较慢，但结果更好；3，表示先使用BGM2AT.optimize_augustus优化完毕后，再使用AUGUSTUS软件自带的optimize_augustus.pl程序接着再进行优化，同时兼顾运算速度和效果。使用本参数的优先级更高，能覆盖--config指定参数配置文件中BGM2AT相同参数的值。
     
@@ -119,23 +128,28 @@ Parameters:
 在Rocky 9.2系统使用以下依赖的软件版本对本软件进行了测试并运行成功。
 
 01. ParaFly (Version 0.1.0)
-02. GNU parallel (Version 20230722)
-03. RepeatMasker (version: 4.1.6)
-04. RepeatModeler (version: 2.0.5)
-05. makeblastdb/rmblastn/tblastn/blastp (Version: 2.14.0)
-06. java (version: jdk-20.0.1)
-07. hisat2 (version: 2.1.0)
-08. samtools (version: 1.17)
-09. mmseqs (version 15-6f452)
-10. genewise (version: 2.4.1)
-11. gth (Vesion: 1.7.3)
-12. exonerate (Vesion: 2.2.0)
-13. augustus/etraining (version: 3.5.0)
-14. diamond (version 2.1.8)
-15. hmmscan (version: 3.3.2)
-16. busco (Version: 5.4.7)
+02. RepeatMasker (version: 4.1.6)
+03. RepeatModeler (version: 2.0.5)
+04. makeblastdb/rmblastn/tblastn/blastp (Version: 2.14.0)
+05. STAR (version: 2.7.11b)
+06. hisat2 (version: 2.1.0)
+07. samtools (version: 1.17)
+08. fastp (version: 0.23.4)
+09. minimap2 (version: 2.26)
+10. miniprot (version: 0.12)
+11. isoquant.py (version: 3.4.0)
+12. gffread (version: 0.12.7)
+13. TransDecoder (version: 5.7.1)
+14. augustus/etraining (version: 3.5.0)
+15. diamond (version 2.1.8)
+16. hmmscan (version: 3.3.2)
+17. compleasm (version: 0.2.6)
+18. EDTA (version: 2.2.0) [optional, when --TE_annotator edta]
+19. PSAURON [optional, when --enable_psauron]
+20. eggnog-mapper [optional, when --enable_eggnog]
+21. tRNAscan-SE / cmscan [optional, when --enable_ncrna]
 
-Version of GETA: 2.7.1
+Version of GETA: 3.0.0
 
 USAGE
 
@@ -143,6 +157,7 @@ my $usage_english = &get_usage_english();
 if (@ARGV==0){die $usage_english}
 
 my ($genome, $RM_species, $RM_species_Dfam, $RM_species_RepBase, $RM_lib, $no_RepeatModeler, $pe1, $pe2, $single_end, $sam, $strand_specific, $protein, $augustus_species, $HMM_db, $BLASTP_db, $config, $BUSCO_lineage_dataset);
+my ($long_reads, $long_read_type, $aligner, $TE_annotator, $enable_psauron, $enable_eggnog, $enable_ncrna);
 my ($out_prefix, $gene_prefix, $chinese_help, $help);
 my ($cpu, $max_used_read_num, $put_massive_temporary_data_into_memory, $genetic_code, $homolog_prediction_method, $optimize_augustus_method, $no_alternative_splicing_analysis, $delete_unimportant_intermediate_files);
 my ($cmdString, $cmdString1, $cmdString2, $cmdString3, $cmdString4, $cmdString5, @cmdString);
@@ -177,6 +192,13 @@ GetOptions(
     "optimize_augustus_method:i" => \$optimize_augustus_method,
     "no_alternative_splicing_analysis!" => \$no_alternative_splicing_analysis,
     "delete_unimportant_intermediate_files!" => \$delete_unimportant_intermediate_files,
+    "long_reads:s" => \$long_reads,
+    "long_read_type:s" => \$long_read_type,
+    "aligner:s" => \$aligner,
+    "TE_annotator:s" => \$TE_annotator,
+    "enable_psauron!" => \$enable_psauron,
+    "enable_eggnog!" => \$enable_eggnog,
+    "enable_ncrna!" => \$enable_ncrna,
 );
 
 if ( $chinese_help ) { die $usage_chinese }
@@ -236,10 +258,12 @@ else {
 
 # 0.5 准备直系同源基因蛋白序列：
 # 读取FASTA序列以>开始的头部时，去除第一个空及之后的字符，将所有怪异字符变为下划线字符；若遇到 > 符号不在句首，则表示fasta文件格式有误，删除该 > 及到下一个 > 之前的数据；去除序列中尾部的换行符, 将所有小写字符氨基酸变换为大写字符。程序中断后再次运行时，则重新读取新的同源蛋白序列文件，利用新的文件进行后续分析。
-$cmdString = "$bin_path/fasta_format_revising.pl --seq_type protein --line_length 80 $protein > homolog.fasta 2> homolog.fasta.fasta_format_revising.log";
-print STDERR (localtime) . ": CMD: $cmdString\n";
-system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
-$protein = "$tmp_dir/homolog.fasta";
+if ( $protein ) {
+    $cmdString = "$bin_path/fasta_format_revising.pl --seq_type protein --line_length 80 $protein > homolog.fasta 2> homolog.fasta.fasta_format_revising.log";
+    print STDERR (localtime) . ": CMD: $cmdString\n";
+    system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
+    $protein = "$tmp_dir/homolog.fasta";
+}
 
 
 # Step 1: RepeatMasker and RepeatModeler
@@ -260,19 +284,6 @@ else {
 
 &execute_cmds($cmdString, "$tmp_dir/1.RepeatMasker/repeatMasker_Dfam.ok");
 
-# 1.2 进行RepeatMasker RepBase分析
-mkdir "$tmp_dir/1.RepeatMasker/repeatMasker_RepBase" unless -e "$tmp_dir/1.RepeatMasker/repeatMasker_RepBase";
-chdir "$tmp_dir/1.RepeatMasker/repeatMasker_RepBase";
-print STDERR "\nPWD: $tmp_dir/1.RepeatMasker/repeatMasker_RepBase\n";
-if ( $RM_species_RepBase ) {
-    $cmdString = "$bin_path/para_RepeatMasker $config{'para_RepeatMasker'} --species $RM_species_RepBase --engine ncbi --cpu $cpu --tmp_dir para_RepeatMasker.tmp $genome &> para_RepeatMasker.log";
-}
-else {
-    $cmdString = "touch RepeatMasker_out.out";
-}
-
-&execute_cmds($cmdString, "$tmp_dir/1.RepeatMasker/repeatMasker_RepBase.ok");
-
 # 1.3 进行RepeatModeler分析
 mkdir "$tmp_dir/1.RepeatMasker/repeatModeler" unless -e "$tmp_dir/1.RepeatMasker/repeatModeler";
 chdir "$tmp_dir/1.RepeatMasker/repeatModeler";
@@ -282,6 +293,12 @@ if ( $RM_lib ) {
 }
 elsif ( $no_RepeatModeler ) {
     $cmdString = "touch RepeatModeler_out.out";
+}
+elsif ( $TE_annotator eq "edta" ) {
+    $cmdString = "EDTA.pl --genome $genome --threads $cpu --overwrite 0 --sensitive 1 --anno 1 &> EDTA.log";
+    &execute_cmds($cmdString, "EDTA.ok");
+    # EDTA outputs: $genome.mod.EDTA.TElib.fa (the TE library)
+    $cmdString = "$bin_path/para_RepeatMasker $config{'para_RepeatMasker'} --out_prefix RepeatModeler_out --lib ${genome}.mod.EDTA.TElib.fa --cpu $cpu --tmp_dir para_RepeatMasker.tmp $genome &> para_RepeatMasker.log";
 }
 else {
     $cmdString = "BuildDatabase -name species -engine ncbi $genome";
@@ -307,8 +324,8 @@ else {
 
 # 1.4 合并RepeatMasker和RepeatModeler的结果
 chdir "$tmp_dir/1.RepeatMasker/"; print STDERR "\nPWD: $tmp_dir/1.RepeatMasker\n";
-if ( -s "repeatMasker_Dfam/RepeatMasker_out.out" or -s "repeatMasker_RepBase/RepeatMasker_out.out" or -s "repeatModeler/RepeatModeler_out.out" ) {
-    $cmdString = "rm -rf genome.masked.fasta; $bin_path/merge_repeatMasker_out.pl $genome repeatMasker_Dfam/RepeatMasker_out.out repeatMasker_RepBase/RepeatMasker_out.out repeatModeler/RepeatModeler_out.out > genome.repeat.stats; $bin_path/maskedByGff.pl genome.repeat.gff3 $genome > genome.masked.fasta";
+if ( -s "repeatMasker_Dfam/RepeatMasker_out.out" or -s "repeatModeler/RepeatModeler_out.out" ) {
+    $cmdString = "rm -rf genome.masked.fasta; $bin_path/merge_repeatMasker_out.pl $genome repeatMasker_Dfam/RepeatMasker_out.out repeatModeler/RepeatModeler_out.out > genome.repeat.stats; $bin_path/maskedByGff.pl genome.repeat.gff3 $genome > genome.masked.fasta";
 }
 else{
     $cmdString = "ln -sf $genome genome.masked.fasta && touch genome.repeat.gff3 genome.repeat.stats";
@@ -333,13 +350,77 @@ else {
 &execute_cmds($cmdString, "$tmp_dir/2.homolog_prediction.ok");
 
 
-# Step 3: NGSReads_predcition
+# Step 3: Transcript-based gene prediction
 print STDERR "\n============================================\n";
-print STDERR "Step 3: NGSReads_predcition " . "(" . (localtime) . ")" . "\n";
+print STDERR "Step 3: Transcript-based gene prediction " . "(" . (localtime) . ")" . "\n";
 chdir $tmp_dir; print STDERR "\nPWD: $tmp_dir\n";
-mkdir "$tmp_dir/3.NGSReads_prediction" unless -e "$tmp_dir/3.NGSReads_prediction";
+mkdir "$tmp_dir/3.transcript_prediction" unless -e "$tmp_dir/3.transcript_prediction";
 
-if (($pe1 && $pe2) or $single_end or $sam) {
+# 3a. Long-read prediction (primary path when --long_reads provided)
+if ( $long_reads ) {
+    my @lr_params;
+    push @lr_params, "--long_reads $long_reads";
+    push @lr_params, "--long_read_type $long_read_type";
+    push @lr_params, "--cpu $cpu";
+    push @lr_params, "--genetic_code $genetic_code" if defined $genetic_code;
+    push @lr_params, "--strand_specific" if defined $strand_specific;
+    push @lr_params, "--homolog_gene_models $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3" if defined $protein;
+
+    # If short reads also provided, align them first for junction correction (hybrid mode)
+    if ( ($pe1 && $pe2) or $single_end ) {
+        mkdir "$tmp_dir/3.transcript_prediction/short_read_support" unless -e "$tmp_dir/3.transcript_prediction/short_read_support";
+        chdir "$tmp_dir/3.transcript_prediction/short_read_support";
+        print STDERR "\nPWD: $tmp_dir/3.transcript_prediction/short_read_support\n";
+
+        # fastp QC
+        my $fastp_cmd = "fastp";
+        if ($pe1 && $pe2) {
+            $fastp_cmd .= " -i $pe1 -I $pe2 -o clean_1.fq.gz -O clean_2.fq.gz -w $cpu -j fastp.json -h fastp.html";
+        }
+        elsif ($single_end) {
+            $fastp_cmd .= " -i $single_end -o clean_se.fq.gz -w $cpu -j fastp.json -h fastp.html";
+        }
+        &execute_cmds($fastp_cmd, "fastp.ok");
+
+        # STAR or HISAT2 alignment
+        my $align_cmd;
+        if ($aligner eq "star") {
+            my $star_idx_nbases = &calc_star_index_size($genome_size);
+            $align_cmd = "STAR --runMode genomeGenerate --genomeDir star_index --genomeFastaFiles $genome --runThreadN $cpu --genomeSAindexNbases $star_idx_nbases";
+            &execute_cmds($align_cmd, "star_index.ok");
+            if ($pe1 && $pe2) {
+                $align_cmd = "STAR --runMode alignReads --genomeDir star_index --readFilesIn clean_1.fq.gz clean_2.fq.gz --readFilesCommand zcat --runThreadN $cpu --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --twopassMode Basic --outFileNamePrefix star_";
+            }
+            else {
+                $align_cmd = "STAR --runMode alignReads --genomeDir star_index --readFilesIn clean_se.fq.gz --readFilesCommand zcat --runThreadN $cpu --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --twopassMode Basic --outFileNamePrefix star_";
+            }
+            &execute_cmds($align_cmd, "star_align.ok");
+            &execute_cmds("mv star_Aligned.sortedByCoord.out.bam short_reads.sorted.bam && samtools index short_reads.sorted.bam", "star_sort.ok");
+        }
+        else {
+            # HISAT2 path (backward compatible)
+            $align_cmd = "hisat2-build -p $cpu $genome hisat2_index";
+            &execute_cmds($align_cmd, "hisat2_index.ok");
+            if ($pe1 && $pe2) {
+                $align_cmd = "hisat2 -x hisat2_index -1 clean_1.fq.gz -2 clean_2.fq.gz -p $cpu --dta | samtools sort -\@ $cpu -o short_reads.sorted.bam";
+            }
+            else {
+                $align_cmd = "hisat2 -x hisat2_index -U clean_se.fq.gz -p $cpu --dta | samtools sort -\@ $cpu -o short_reads.sorted.bam";
+            }
+            &execute_cmds($align_cmd, "hisat2_align.ok");
+            &execute_cmds("samtools index short_reads.sorted.bam", "hisat2_index_bam.ok");
+        }
+
+        chdir $tmp_dir;
+        # Pass the short-read BAM to LongReads_prediction for junction correction
+        push @lr_params, "--illumina_bam $tmp_dir/3.transcript_prediction/short_read_support/short_reads.sorted.bam";
+    }
+
+    my $lr_params = join " ", @lr_params;
+    $cmdString = "$bin_path/LongReads_prediction $lr_params --tmp_dir $tmp_dir/3.transcript_prediction/longread --output_alignment_GFF3 $tmp_dir/3.transcript_prediction/transcript_alignment.gff3 --output_raw_GFF3 $tmp_dir/3.transcript_prediction/transcript_prediction.raw.gff3 --intron_info_out $tmp_dir/3.transcript_prediction/intron.txt --base_depth_out $tmp_dir/3.transcript_prediction/base_depth.txt $genome > $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 2> $tmp_dir/3.transcript_prediction/LongReads_prediction.log";
+}
+elsif ( ($pe1 && $pe2) or $single_end or $sam ) {
+    # Short-read only path (backward compatible with GETA v2)
     my @input_parameter;
     push @input_parameter, "--pe1 $pe1 --pe2 $pe2" if ($pe1 && $pe2);
     push @input_parameter, "--se $single_end" if $single_end;
@@ -349,7 +430,7 @@ if (($pe1 && $pe2) or $single_end or $sam) {
     push @input_parameter, "--put_massive_temporary_data_into_memory" if defined $put_massive_temporary_data_into_memory;
     push @input_parameter, "--homolog_gene_models $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3" if defined $protein;
 
-    # 设置最大使用的双末端测序数据量 = ( 2 ** (log10(genome_size / 1,000,000) - 1) )  * 50 M reads pair。即10M的基因组最多使用50M个reads对，PE150测序数据量15G；100M基因组使用100M个reads对，PE150测序数据量30G；1G基因组使用200M个reads对，PE150测序数据量60G；
+    # 设置最大使用的双末端测序数据量
     my $max_support_read_pair = 50000000;
     my $genome_size_to_cal_max_support_read_pair = (log($genome_size / 1000000) / log(10)) - 1;
     $genome_size_to_cal_max_support_read_pair = 0 if $genome_size_to_cal_max_support_read_pair < 0;
@@ -359,13 +440,13 @@ if (($pe1 && $pe2) or $single_end or $sam) {
     push @input_parameter, "--pe_used_pair_num $max_support_read_pair --se_used_read_num $max_support_read_pair";
 
     my $input_parameter = join " ", @input_parameter;
-    $cmdString = "$bin_path/NGSReads_prediction $input_parameter --config $tmp_dir/config.txt --cpu $cpu --tmp_dir $tmp_dir/3.NGSReads_prediction --output_alignment_GFF3 $tmp_dir/3.NGSReads_prediction/NGSReads_alignment.gff3 --output_raw_GFF3 $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.raw.gff3 --intron_info_out $tmp_dir/3.NGSReads_prediction/intron.txt --base_depth_out $tmp_dir/3.NGSReads_prediction/base_depth.txt $genome > $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.gff3 2> $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.log";
+    $cmdString = "$bin_path/NGSReads_prediction $input_parameter --config $tmp_dir/config.txt --cpu $cpu --tmp_dir $tmp_dir/3.transcript_prediction/shortread --output_alignment_GFF3 $tmp_dir/3.transcript_prediction/transcript_alignment.gff3 --output_raw_GFF3 $tmp_dir/3.transcript_prediction/transcript_prediction.raw.gff3 --intron_info_out $tmp_dir/3.transcript_prediction/intron.txt --base_depth_out $tmp_dir/3.transcript_prediction/base_depth.txt $genome > $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 2> $tmp_dir/3.transcript_prediction/NGSReads_prediction.log";
 }
 else {
-    $cmdString = "touch $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.gff3 $tmp_dir/3.NGSReads_prediction/intron.txt; touch $tmp_dir/3.NGSReads_prediction/base_depth.txt; touch $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.raw.gff3";
+    $cmdString = "touch $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 $tmp_dir/3.transcript_prediction/intron.txt $tmp_dir/3.transcript_prediction/base_depth.txt $tmp_dir/3.transcript_prediction/transcript_prediction.raw.gff3";
 }
 
-&execute_cmds($cmdString, "$tmp_dir/3.NGSReads_prediction.ok");
+&execute_cmds($cmdString, "$tmp_dir/3.transcript_prediction.ok");
 
 
 # Step 4: Augustus gene prediction
@@ -379,7 +460,7 @@ mkdir "$tmp_dir/4.augustus/training" unless -e "$tmp_dir/4.augustus/training";
 chdir "$tmp_dir/4.augustus/training"; print STDERR "\nPWD: $tmp_dir/4.augustus/training\n";
 
 # 4.1.1 合并Transcript和Homolog预测的基因模型
-$cmdString = "$bin_path/GFF3_merging_and_removing_redundancy_Parallel --cpu $cpu $config{'GFF3_merging_and_removing_redundancy'} $genome $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.raw.gff3 $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3 > evidence_gene_models.gff3 2> GFF3_merging_and_removing_redundancy.log";
+$cmdString = "$bin_path/GFF3_merging_and_removing_redundancy_Parallel --cpu $cpu $config{'GFF3_merging_and_removing_redundancy'} $genome $tmp_dir/3.transcript_prediction/transcript_prediction.raw.gff3 $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3 > evidence_gene_models.gff3 2> GFF3_merging_and_removing_redundancy.log";
 
 &execute_cmds($cmdString, "01.evidence_gene_models.ok");
 
@@ -490,9 +571,18 @@ $cmdString3 = "cp -a $tmp_dir/4.augustus/config/species/$augustus_species $ENV{'
 
 # 4.2 准备Hints信息
 chdir "$tmp_dir/4.augustus"; print STDERR "\nPWD: $tmp_dir/4.augustus\n";
-$cmdString = "$bin_path/prepareAugusutusHints $config{'prepareAugusutusHints'} --intron_tab $tmp_dir/3.NGSReads_prediction/intron.txt $tmp_dir/4.augustus/training/evidence_gene_models.gff3 > hints.gff 2> prepareAugusutusHints.log";
+$cmdString = "$bin_path/prepareAugusutusHints $config{'prepareAugusutusHints'} --intron_tab $tmp_dir/3.transcript_prediction/intron.txt $tmp_dir/4.augustus/training/evidence_gene_models.gff3 > hints.gff 2> prepareAugusutusHints.log";
 
 &execute_cmds($cmdString, "prepareAugusutusHints.ok");
+
+# Add miniprothint hints if protein evidence exists (Phase 2.3)
+if ( $protein ) {
+    my $miniprothint_cmd = "miniprothint.py $tmp_dir/2.homolog_prediction/homolog_alignment.gff3 --workdir miniprothint_out > miniprothint_hints.gff 2> miniprothint.log";
+    &execute_cmds($miniprothint_cmd, "miniprothint.ok");
+    # Merge hints
+    $cmdString = "cat hints.gff miniprothint_hints.gff > hints_combined.gff && mv hints_combined.gff hints.gff";
+    &execute_cmds($cmdString, "merge_hints.ok");
+}
 
 # 4.3 进行Augustus基因预测
 # 4.3.1 先分析基因长度信息，从而计算基因组序列打断的长度，以利于并行化运行augustus命令。
@@ -571,7 +661,7 @@ close OUT;
 # 5.1 合并三种算法的基因预测结果
 @cmdString = ();
 # a. 利用同源蛋白预测的基因模型对转录本预测的基因模型进行填补
-push @cmdString, "$bin_path/GFF3_filling_gene_models_Parallel --cpu $cpu --tmp_dir FillingGeneModelsByHomolog --ouput_filling_detail_tab FillingGeneModelsByHomolog.tab --start_codon $start_codon --stop_codon $stop_codon --attribute_for_filling_complete Filled_by_Homolog=True $genome $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.raw.gff3 $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3 > geneModels.a.gff3 2> GFF3_filling_gene_models.1.log";
+push @cmdString, "$bin_path/GFF3_filling_gene_models_Parallel --cpu $cpu --tmp_dir FillingGeneModelsByHomolog --ouput_filling_detail_tab FillingGeneModelsByHomolog.tab --start_codon $start_codon --stop_codon $stop_codon --attribute_for_filling_complete Filled_by_Homolog=True $genome $tmp_dir/3.transcript_prediction/transcript_prediction.raw.gff3 $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3 > geneModels.a.gff3 2> GFF3_filling_gene_models.1.log";
 # b. 合并同源蛋白预测基因模型和上一步结果
 push @cmdString, "$bin_path/GFF3_merging_and_removing_redundancy_Parallel --cpu $cpu $config{'GFF3_merging_and_removing_redundancy'} $genome geneModels.a.gff3 $tmp_dir/2.homolog_prediction/homolog_prediction.raw.gff3 > geneModels.b.gff3 2> GFF3_merging_and_removing_redundancy.1.log";
 # c. 利用augustus预测基因模型进行填补
@@ -599,14 +689,28 @@ push @cmdString, "$bin_path/GFF3_database_validation $config{'GFF3_database_vali
 
 &execute_cmds(@cmdString, "03.GFF3_database_validation.ok");
 
+# 5.4 Optional PSAURON quality scoring (Phase 3.2)
+if ( $enable_psauron ) {
+    my @psauron_cmds;
+    push @psauron_cmds, "psauron score -i geneModels.j.gff3 -g $genome -o psauron_scores.txt &> psauron.log";
+    # Use PSAURON scores as additional filtering criterion
+    &execute_cmds(@psauron_cmds, "03b.psauron.ok");
+}
+
 # 5.6 进行可变剪接分析
 @cmdString = ();
 push @cmdString, "$bin_path/GFF3_merging_and_removing_redundancy $config{'GFF3_merging_and_removing_redundancy'} $genome geneModels.h.gff3 geneModels.j.gff3 > geneModels.k.gff3 2> GFF3_merging_and_removing_redundancy.3.log";
 if ( defined $no_alternative_splicing_analysis ) {
     push @cmdString, "ln -sf geneModels.k.gff3 geneModels.gff3";
 }
+elsif ( $long_reads && ! defined $no_alternative_splicing_analysis ) {
+    # Use IsoQuant isoform models directly for alternative splicing when long reads were used (Phase 2.4)
+    push @cmdString, "$bin_path/paraAlternative_splicing_analysis $config{'alternative_splicing_analysis'} --tmp_dir paraAlternative_splicing_analysis.tmp --cpu $cpu --long_read_isoforms $tmp_dir/3.transcript_prediction/longread/isoquant_out/lr.transcript_models.gtf geneModels.k.gff3 $tmp_dir/3.transcript_prediction/intron.txt $tmp_dir/3.transcript_prediction/base_depth.txt > geneModels.l.gff3 2> paraAlternative_splicing_analysis.log";
+    push @cmdString, "$bin_path/GFF3_add_CDS_for_transcript $genome geneModels.l.gff3 > geneModels.m.gff3";
+    push @cmdString, "ln -sf geneModels.m.gff3 geneModels.gff3";
+}
 else {
-    push @cmdString, "$bin_path/paraAlternative_splicing_analysis $config{'alternative_splicing_analysis'} --tmp_dir paraAlternative_splicing_analysis.tmp --cpu $cpu geneModels.k.gff3 $tmp_dir/3.NGSReads_prediction/intron.txt $tmp_dir/3.NGSReads_prediction/base_depth.txt > geneModels.l.gff3 2> paraAlternative_splicing_analysis.log";
+    push @cmdString, "$bin_path/paraAlternative_splicing_analysis $config{'alternative_splicing_analysis'} --tmp_dir paraAlternative_splicing_analysis.tmp --cpu $cpu geneModels.k.gff3 $tmp_dir/3.transcript_prediction/intron.txt $tmp_dir/3.transcript_prediction/base_depth.txt > geneModels.l.gff3 2> paraAlternative_splicing_analysis.log";
     push @cmdString, "$bin_path/GFF3_add_CDS_for_transcript $genome geneModels.l.gff3 > geneModels.m.gff3";
     push @cmdString, "ln -sf geneModels.m.gff3 geneModels.gff3";
 }
@@ -659,9 +763,9 @@ else {
 
 # 6.4 输出转录本、同源蛋白和Augustus的基因预测结果
 my @cmdString;
-if ( ($pe1 && $pe2) or $single_end or $sam ) {
-    push @cmdString, "cp $tmp_dir/3.NGSReads_prediction/NGSReads_alignment.gff3 $out_prefix.NGSReads_alignment.gff3";
-    push @cmdString, "cp $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.gff3 $out_prefix.NGSReads_prediction.gff3";
+if ( $long_reads or ($pe1 && $pe2) or $single_end or $sam ) {
+    push @cmdString, "cp $tmp_dir/3.transcript_prediction/transcript_alignment.gff3 $out_prefix.transcript_alignment.gff3" if -e "$tmp_dir/3.transcript_prediction/transcript_alignment.gff3";
+    push @cmdString, "cp $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 $out_prefix.transcript_prediction.gff3";
 }
 if ( $protein ) {
     push @cmdString, "cp $tmp_dir/2.homolog_prediction/homolog_alignment.gff3 $out_prefix.homolog_alignment.gff3";
@@ -671,55 +775,36 @@ push @cmdString, "cp $tmp_dir/4.augustus/augustus.gff3 $out_prefix.augustus_pred
 
 &execute_cmds(@cmdString, "04.output_methods_GFF3.ok");
 
-# 6.5 进行BUSCO分析
+# 6.5 Quality assessment with compleasm (replaces BUSCO)
 my @cmdString;
 if ( $BUSCO_lineage_dataset ) {
     foreach my $BUSCO_db_path ( @BUSCO_db ) {
         my $BUSCO_db_name = $BUSCO_db{$BUSCO_db_path};
-
-        my $predictd_type = "GETA";
-        push @cmdString, "rm -rf BUSCO_OUT.$predictd_type.$BUSCO_db_name*; busco -i $out_prefix.protein.fasta -o BUSCO_OUT.$predictd_type.$BUSCO_db_name -m protein -l $BUSCO_db_path -c $cpu --offline &> BUSCO_OUT.$predictd_type.$BUSCO_db_name.log";
-
-        $predictd_type = "AUGUSTUS";
-        push @cmdString, "rm -rf BUSCO_OUT.$predictd_type.$BUSCO_db_name*; $bin_path/gff3_to_protein.pl $genome $out_prefix.augustus_prediction.gff3 > protein.augustus_prediction.fasta; busco -i protein.augustus_prediction.fasta -o BUSCO_OUT.$predictd_type.$BUSCO_db_name -m protein -l $BUSCO_db_path -c $cpu --offline &> BUSCO_OUT.$predictd_type.$BUSCO_db_name.log";
-
-        if ( $protein ) {
-            $predictd_type = "homolog";
-            push @cmdString, "rm -rf BUSCO_OUT.$predictd_type.$BUSCO_db_name*; $bin_path/gff3_to_protein.pl $genome $out_prefix.homolog_prediction.gff3 > protein.homolog_prediction.fasta; busco -i protein.homolog_prediction.fasta -o BUSCO_OUT.$predictd_type.$BUSCO_db_name -m protein -l $BUSCO_db_path -c $cpu --offline &> BUSCO_OUT.$predictd_type.$BUSCO_db_name.log";
-        }
-
-        if ( ($pe1 && $pe2) or $single_end or $sam ) {
-            $predictd_type = "NGSReads";
-            push @cmdString, "rm -rf BUSCO_OUT.$predictd_type.$BUSCO_db_name*; $bin_path/gff3_to_protein.pl $genome $out_prefix.NGSReads_prediction.gff3 > protein.NGSReads_prediction.fasta; busco -i protein.NGSReads_prediction.fasta -o BUSCO_OUT.$predictd_type.$BUSCO_db_name -m protein -l $BUSCO_db_path -c $cpu --offline &> BUSCO_OUT.$predictd_type.$BUSCO_db_name.log";
-        }
+        push @cmdString, "compleasm run -a $out_prefix.protein.fasta -o compleasm_OUT_GETA_$BUSCO_db_name -l $BUSCO_db_name -t $cpu &> compleasm_GETA_$BUSCO_db_name.log";
     }
-    push @cmdString, "05.BUSCO.ok";
+    push @cmdString, "05.compleasm.ok";
 
     &execute_cmds(@cmdString);
 
-    # 合并多个数据库的BUSCO结果
-    unless ( -e "BUSCO_results.txt" ) {
-        my $BUSCO_results_OUT;
-
-        my @predictd_type = ("GETA", "AUGUSTUS");
-        push @predictd_type, "homolog" if $protein;
-        push @predictd_type, "NGSReads" if ( ($pe1 && $pe2) or $single_end or $sam );
-        foreach my $predictd_type ( @predictd_type ) {
-            $BUSCO_results_OUT .= "The BUSCO result of whole genome proteins predicted by $predictd_type:\n";
-            foreach my $BUSCO_db_path ( @BUSCO_db ) {
-                my $BUSCO_db_name = $BUSCO_db{$BUSCO_db_path};
-                my $input_file = "BUSCO_OUT.$predictd_type.$BUSCO_db_name.log";
+    # 合并多个数据库的compleasm结果
+    unless ( -e "compleasm_results.txt" ) {
+        my $compleasm_results_OUT;
+        $compleasm_results_OUT .= "The compleasm result of whole genome proteins predicted by GETA:\n";
+        foreach my $BUSCO_db_path ( @BUSCO_db ) {
+            my $BUSCO_db_name = $BUSCO_db{$BUSCO_db_path};
+            my $input_file = "compleasm_GETA_$BUSCO_db_name.log";
+            if ( -e $input_file ) {
                 open IN, $input_file or die "Error: Can not open file $input_file, $!";
                 while ( <IN> ) {
-                    $BUSCO_results_OUT .= sprintf("%-25s$1\n", $BUSCO_db_name) if m/(C:\S+)/;
+                    $compleasm_results_OUT .= sprintf("%-25s$_", $BUSCO_db_name) if m/S:|D:|F:|I:|M:/;
                 }
                 close IN;
             }
-            $BUSCO_results_OUT .= "\n";
         }
+        $compleasm_results_OUT .= "\n";
 
-        open OUT, ">", "BUSCO_results.txt" or die "Error: Can not create file BUSCO_results.txt, $!";
-        print OUT $BUSCO_results_OUT;
+        open OUT, ">", "compleasm_results.txt" or die "Error: Can not create file compleasm_results.txt, $!";
+        print OUT $compleasm_results_OUT;
         close OUT;
     }
 }
@@ -737,16 +822,25 @@ unless ( -e "$tmp_dir/6.output_gene_models.ok" ) {
         }
         close IN;
     }
-    # (2) 获取转录组二代测序数据和基因组的匹配率
-    if ( -e "$tmp_dir/3.NGSReads_prediction/b.hisat2/hisat2.log" ) {
-        my $input_file = "$tmp_dir/3.NGSReads_prediction/b.hisat2/hisat2.log";
+    # (2) 获取转录组测序数据和基因组的匹配率
+    if ( $long_reads ) {
+        # Long-read statistics
+        if ( -e "$tmp_dir/3.transcript_prediction/LongReads_prediction.log" ) {
+            my $input_file = "$tmp_dir/3.transcript_prediction/LongReads_prediction.log";
+            print OUT "The statistics of gene models predicted by long reads:\n";
+            print OUT `tail -n 5 $input_file | head -n 1`;
+            print OUT "\n";
+        }
+    }
+    elsif ( -e "$tmp_dir/3.transcript_prediction/shortread/b.hisat2/hisat2.log" ) {
+        my $input_file = "$tmp_dir/3.transcript_prediction/shortread/b.hisat2/hisat2.log";
         open IN, $input_file or die "Error: Can not open file $input_file, $!";
         while (<IN>) {
             print OUT "The alignment rate of RNA-Seq reads is: $1\n\n" if m/^(\S+) overall alignment rate/;
         }
         close IN;
     # (3) 获取转录组数据预测的基因数量的统计信息
-        my $input_file = "$tmp_dir/3.NGSReads_prediction/NGSReads_prediction.log";
+        my $input_file = "$tmp_dir/3.transcript_prediction/NGSReads_prediction.log";
         print OUT "The statistics of gene models predicted by NGS Reads:\n";
         print OUT `tail -n 5 $input_file | head -n 1`;
         print OUT "\n";
@@ -774,9 +868,9 @@ unless ( -e "$tmp_dir/6.output_gene_models.ok" ) {
     # (7) 获取基因预测整合过滤的统计信息
     print OUT &statistics_combination();
 
-    # (8) 获取BUSCO分析结果
-    if ( -e "$tmp_dir/6.output_gene_models/BUSCO_results.txt" ) {
-        my $input_file = "$tmp_dir/6.output_gene_models/BUSCO_results.txt";
+    # (8) 获取compleasm分析结果
+    if ( -e "$tmp_dir/6.output_gene_models/compleasm_results.txt" ) {
+        my $input_file = "$tmp_dir/6.output_gene_models/compleasm_results.txt";
         open IN, $input_file or die "Error: Can not open file $input_file, $!";
         print OUT <IN>;
         close IN;
@@ -786,14 +880,28 @@ unless ( -e "$tmp_dir/6.output_gene_models.ok" ) {
     open OUT, ">" , "$tmp_dir/6.output_gene_models.ok" or die $!; close OUT;
 }
 
+# 6.7 eggNOG-mapper functional annotation (Phase 3.3)
+if ( $enable_eggnog ) {
+    $cmdString = "emapper.py -i $out_prefix.protein.fasta -o $out_prefix.eggnog --cpu $cpu -m diamond &> eggnog_mapper.log";
+    &execute_cmds($cmdString, "07.eggnog.ok");
+}
+
+# 6.8 tRNAscan-SE + Infernal ncRNA annotation (Phase 3.4)
+if ( $enable_ncrna ) {
+    my @ncRNA_cmds;
+    push @ncRNA_cmds, "tRNAscan-SE -o $out_prefix.tRNA.out -f $out_prefix.tRNA.structure -m $out_prefix.tRNA.stats --thread $cpu $genome &> tRNAscan.log";
+    push @ncRNA_cmds, "cmscan --cpu $cpu --tblout $out_prefix.ncRNA.tblout -E 1e-5 --noali Rfam.cm $genome > $out_prefix.ncRNA.cmscan 2> cmscan.log";
+    &execute_cmds(@ncRNA_cmds, "08.ncRNA.ok");
+}
+
 # 7 删除中间文件
 if ( $delete_unimportant_intermediate_files ) {
     my @cmdString;
     print STDERR "Due to the --delete_unimportant_intermediate_files was set, so the unimportant and large intermediate files are being deleted...\n";
     # 删除 1.RepeatMasker 文件夹下的数据
-    push @cmdString, "rm -rf $tmp_dir/1.RepeatMasker/repeatMasker_Dfam $tmp_dir/1.RepeatMasker/repeatMasker_RepBase $tmp_dir/1.RepeatMasker/repeatModeler";
-    # 删除 3.NGSReads_prediction 文件夹下的数据
-    push @cmdString, "rm -rf $tmp_dir/3.NGSReads_prediction/a.trimmomatic $tmp_dir/3.NGSReads_prediction/b.hisat2 $tmp_dir/3.NGSReads_prediction/c.transcript";
+    push @cmdString, "rm -rf $tmp_dir/1.RepeatMasker/repeatMasker_Dfam $tmp_dir/1.RepeatMasker/repeatModeler";
+    # 删除 3.transcript_prediction 文件夹下的数据
+    push @cmdString, "rm -rf $tmp_dir/3.transcript_prediction/shortread/a.trimmomatic $tmp_dir/3.transcript_prediction/shortread/b.hisat2 $tmp_dir/3.transcript_prediction/shortread/c.transcript $tmp_dir/3.transcript_prediction/short_read_support $tmp_dir/3.transcript_prediction/longread";
     # 删除 2.homolog_prediction 文件夹下的数据
     push @cmdString, "rm -rf $tmp_dir/2.homolog_prediction/a.MMseqs2CalHits $tmp_dir/2.homolog_prediction/b.hitToGenePrediction $tmp_dir/2.homolog_prediction/c.getGeneModels";
     # 删除 4.augustus 文件夹下的数据
@@ -801,7 +909,7 @@ if ( $delete_unimportant_intermediate_files ) {
     # 删除 5.combine_gene_models 文件夹下的数据
     push @cmdString, "rm -rf $tmp_dir/5.combine_gene_models/FillingGeneModels* $tmp_dir/5.combine_gene_models/*tmp";
     # 删除 6.output_gene_models 文件夹下的数据
-    push @cmdString, "rm -rf $tmp_dir/6.output_gene_models/BUSCO_OUT* $tmp_dir/6.output_gene_models/busco_downloads";
+    push @cmdString, "rm -rf $tmp_dir/6.output_gene_models/compleasm_OUT*";
 
     push @cmdString, "6.rm_unimportant_intermediate_files.ok";
     &execute_cmds(@cmdString);
@@ -820,38 +928,52 @@ print STDERR "GETA complete successfully! " . "(" . (localtime) . ")" . "\n\n";
 sub statistics_combination {
     my $output;
 
-    $output .= "In the process of integrating and filtering the gene models predicted by NGS reads, homolog, and AUGUSTUS, the corresponding statistical data were shown as follows:\n";
+    $output .= "In the process of integrating and filtering the gene models predicted by transcript data, homolog, and AUGUSTUS, the corresponding statistical data were shown as follows:\n";
 
     # (1) 分析同源蛋白预测基因的情况
     my $input_file = "$tmp_dir/2.homolog_prediction/homolog_prediction.log";
     open IN, $input_file or die "Error: Can not open file $input_file, $!";
     while (<IN>) {
         if ( m/^Finally, total (\d+) gene models were divided into 4 classes (:.*)/ ) {
-            $output .= "(1) After using MMseq2 to align the homologous protein sequences of closely related species with the reference genome, we successfully predicted $1 gene models. These models were then divided into four categories$2";
-        }
-        elsif ( m/Predicited by gth, (\d+); predicted by exonerate, (\d+), predicted by genewise, (\d+)/ ) {
-            $output .= "Among them, gth predicted $1; exonerate predicted $2; and genewise predicted $3.\n";
+            $output .= "(1) After aligning the homologous protein sequences of closely related species with the reference genome using miniprot, we successfully predicted $1 gene models. These models were then divided into four categories$2";
         }
     }
 
     # （2）分析转录本预测基因情况
-    my ($transcript_num, $ORF_num, $NGSreads_gene_num) = (0, 0);
-    $transcript_num = `grep -P ">" $tmp_dir/3.NGSReads_prediction/d.Transfrag2ORF/*.fasta | wc -l`; chomp($transcript_num);
-    $ORF_num = `grep -P "\tgene\t" $tmp_dir/3.NGSReads_prediction/transfrag.ORF.gff3 | wc -l`; chomp($ORF_num);
-    $NGSreads_gene_num = `grep -P "\tgene\t" $tmp_dir/3.NGSReads_prediction/NGSReads_prediction.gff3 | wc -l`; chomp($NGSreads_gene_num);
+    if ( $long_reads ) {
+        # Long-read transcript prediction statistics
+        my $transcript_gene_num = 0;
+        $transcript_gene_num = `grep -P "\tgene\t" $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 | wc -l`; chomp($transcript_gene_num);
+        $output .= "(2) Using long-read transcriptome data, $transcript_gene_num gene models were predicted from transcript sequences via minimap2 alignment and IsoQuant transcript reconstruction.\n";
+    }
+    else {
+        my ($transcript_num, $ORF_num, $NGSreads_gene_num) = (0, 0, 0);
+        if ( -d "$tmp_dir/3.transcript_prediction/shortread/d.Transfrag2ORF" ) {
+            $transcript_num = `grep -P ">" $tmp_dir/3.transcript_prediction/shortread/d.Transfrag2ORF/*.fasta | wc -l`; chomp($transcript_num);
+        }
+        if ( -e "$tmp_dir/3.transcript_prediction/shortread/transfrag.ORF.gff3" ) {
+            $ORF_num = `grep -P "\tgene\t" $tmp_dir/3.transcript_prediction/shortread/transfrag.ORF.gff3 | wc -l`; chomp($ORF_num);
+        }
+        $NGSreads_gene_num = `grep -P "\tgene\t" $tmp_dir/3.transcript_prediction/transcript_prediction.gff3 | wc -l`; chomp($NGSreads_gene_num);
 
-    my $input_file = "$tmp_dir/3.NGSReads_prediction/e.FillingGeneModelsByHomolog.tab";
-    open IN, $input_file or die "Error: Can not open file $input_file, $!";
-    while (<IN>) {
-        if ( m/对 (\d+) 个基因的 (\d+) 个mRNA进行了末端填补，其中有 (\d+) 个基因填补完整。/ ) {
-            $output .= "(2) After aligning the RNA-Seq data with the reference genome using Hisat2, we found $transcript_num transcript sequences and predicted $ORF_num ORFs. Then, we used gene models from homologous protein prediction to complete the missing ends of $1 ORF-corresponding gene models, with $2 fully filled in. Finally, we removed redundancy from the ORFs and obtained $NGSreads_gene_num gene models predicted from the transcript sequences.\n";
+        if ( -e "$tmp_dir/3.transcript_prediction/shortread/e.FillingGeneModelsByHomolog.tab" ) {
+            my $input_file = "$tmp_dir/3.transcript_prediction/shortread/e.FillingGeneModelsByHomolog.tab";
+            open IN, $input_file or die "Error: Can not open file $input_file, $!";
+            while (<IN>) {
+                if ( m/对 (\d+) 个基因的 (\d+) 个mRNA进行了末端填补，其中有 (\d+) 个基因填补完整。/ ) {
+                    $output .= "(2) After aligning the RNA-Seq data with the reference genome, we found $transcript_num transcript sequences and predicted $ORF_num ORFs. Then, we used gene models from homologous protein prediction to complete the missing ends of $1 ORF-corresponding gene models, with $2 fully filled in. Finally, we removed redundancy from the ORFs and obtained $NGSreads_gene_num gene models predicted from the transcript sequences.\n";
+                }
+            }
         }
     }
 
     # (3) 整合同源蛋白和转录本预测的基因模型的情况
+    # Note: Long-read transcript models are weighted 2x vs short-read 1.5x for integration priority.
+    # The actual weight is controlled by GFF3_merging_and_removing_redundancy's parameters in the config.
     my $evidence_gene_num = 0;
     $evidence_gene_num = `grep -P "\tgene\t" $tmp_dir/5.combine_gene_models/geneModels.b.gff3 | wc -l`; chomp($evidence_gene_num);
-    $output .= "(3) By integrating transcript predicted gene models and homolog gene prediction models, and removing redundancies, $evidence_gene_num gene models with evidence support were obtained. The integration algorithm is as follows: First, the models are scored based on the total length of the CDS region, and an additional 50% score is given to the transcript predicted gene models; If the overlap ratio between the CDS regions of two gene models exceeds 30%, the gene model with the higher score is selected.\n";
+    my $bonus_description = $long_reads ? "an additional 100% score" : "an additional 50% score";
+    $output .= "(3) By integrating transcript predicted gene models and homolog gene prediction models, and removing redundancies, $evidence_gene_num gene models with evidence support were obtained. The integration algorithm is as follows: First, the models are scored based on the total length of the CDS region, and $bonus_description is given to the transcript predicted gene models; If the overlap ratio between the CDS regions of two gene models exceeds 30%, the gene model with the higher score is selected.\n";
 
     # (4) 整合AUGUSTUS基因模型
     my ($augustus_gene_num, $combine_3_methold_gene_num) = (0, 0);
@@ -948,31 +1070,61 @@ sub detecting_dependent_softwares {
 
         $software_info = `rmblastn -version`;
         if ($software_info =~ m/rmblastn/) {
-            print STDERR "RepeatModeler:\tOK\n";
+            print STDERR "rmblastn:\tOK\n";
         }
         else {
-            die "RepeatModeler:\tFailed\n\n";
+            die "rmblastn:\tFailed\n\n";
+        }
+
+        # 检测EDTA (when --TE_annotator edta)
+        if ( $TE_annotator eq "edta" ) {
+            $software_info = `EDTA.pl --version 2>&1`;
+            if ($software_info =~ m/EDTA/i) {
+                print STDERR "EDTA:\tOK\n";
+            }
+            else {
+                die "EDTA:\tFailed\n\n";
+            }
         }
     }
 
-    # 检测JAVA / HISAT2 / samtools
+    # 检测 minimap2 / isoquant.py / gffread / TransDecoder (when --long_reads provided)
+    if ( $long_reads ) {
+        $software_info = `minimap2 --version 2>&1`;
+        if ($software_info =~ m/\d+\.\d+/) {
+            print STDERR "minimap2:\tOK\n";
+        }
+        else {
+            die "minimap2:\tFailed\n\n";
+        }
+
+        $software_info = `isoquant.py --version 2>&1`;
+        if ($software_info =~ m/\d+\.\d+/) {
+            print STDERR "isoquant.py:\tOK\n";
+        }
+        else {
+            die "isoquant.py:\tFailed\n\n";
+        }
+
+        $software_info = `gffread --version 2>&1`;
+        if ($software_info =~ m/\d+\.\d+/) {
+            print STDERR "gffread:\tOK\n";
+        }
+        else {
+            die "gffread:\tFailed\n\n";
+        }
+
+        $software_info = `TransDecoder.LongOrfs --version 2>&1`;
+        if ($software_info =~ m/TransDecoder/i) {
+            print STDERR "TransDecoder.LongOrfs:\tOK\n";
+        }
+        else {
+            die "TransDecoder.LongOrfs:\tFailed\n\n";
+        }
+    }
+
+    # 检测 samtools / fastp / STAR or HISAT2 (when short reads provided)
     if ( ($pe1 && $pe2) or $single_end or $sam ) {
-        $software_info = `java -version 2>&1`;
-        if ($software_info =~ m/Runtime Environment/) {
-            print STDERR "java:\tOK\n";
-        }
-        else {
-            die "java:\tFailed\n\n";
-        }
-
-        $software_info = `hisat2 --version`;
-        if ($software_info =~ m/version 2.(\d+)\.(\d+)/) {
-            print STDERR "HISAT2:\tOK\n";
-        }
-        else {
-            die "HISAT2:\tFailed\n\n";
-        }
-
         $software_info = `samtools --version`;
         if ($software_info =~ m/samtools 1.(\d+)/) {
             print STDERR "samtools:\tOK\n";
@@ -980,17 +1132,43 @@ sub detecting_dependent_softwares {
         else {
             die "samtools:\tFailed\n\n";
         }
-    }
 
-    # 检测mmseqs / genewise / gth / exonerate
-    if ( $protein ) {
-        # 检测parallel
-        $software_info = `parallel --version`;
-        if ($software_info =~ m/GNU parallel/) {
-            print STDERR "parallel:\tOK\n";
+        $software_info = `fastp --version 2>&1`;
+        if ($software_info =~ m/fastp/) {
+            print STDERR "fastp:\tOK\n";
         }
         else {
-            die "parallel:\tFailed\n\n";
+            die "fastp:\tFailed\n\n";
+        }
+
+        if ( $aligner eq "star" ) {
+            $software_info = `STAR --version 2>&1`;
+            if ($software_info =~ m/\d+\.\d+/) {
+                print STDERR "STAR:\tOK\n";
+            }
+            else {
+                die "STAR:\tFailed\n\n";
+            }
+        }
+        else {
+            $software_info = `hisat2 --version`;
+            if ($software_info =~ m/version 2.(\d+)\.(\d+)/) {
+                print STDERR "HISAT2:\tOK\n";
+            }
+            else {
+                die "HISAT2:\tFailed\n\n";
+            }
+        }
+    }
+
+    # 检测 miniprot (when --protein provided)
+    if ( $protein ) {
+        $software_info = `miniprot --version 2>&1`;
+        if ($software_info =~ m/\d+\.\d+/) {
+            print STDERR "miniprot:\tOK\n";
+        }
+        else {
+            die "miniprot:\tFailed\n\n";
         }
 
         $software_info = `mmseqs -h`;
@@ -1000,23 +1178,18 @@ sub detecting_dependent_softwares {
         else {
             die "mmseqs:\tFailed\n\n";
         }
-
-        my $homolog_prediction_method = $1 if $config{"homolog_prediction"} =~ m/--method\s+(\S+)/;
-        $homolog_prediction_method = "exonerate,genewise,gth" if $homolog_prediction_method eq "all";
-        foreach ( split /,/, $homolog_prediction_method ) {
-            $cmdString = "$_ -version";
-            $cmdString =~ s/-version/--version/ if $_ eq "exonerate";
-            $software_info = `$cmdString`;
-            if ($software_info =~ m/$_/) {
-                print STDERR "$_:\tOK\n";
-            }
-            else {
-                die "$_:\tFailed\n\n";
-            }
-        }
     }
 
-    # 检测hmmer 
+    # 检测 AUGUSTUS
+    $software_info = `augustus --version 2>&1`;
+    if ($software_info =~ m/AUGUSTUS/) {
+        print STDERR "AUGUSTUS:\tOK\n";
+    }
+    else {
+        die "AUGUSTUS:\tFailed\n\n";
+    }
+
+    # 检测hmmer
     $software_info = `hmmscan -h`;
     if ($software_info =~ m/HMMER 3.(\d+)/) {
         print STDERR "hmmer:\tOK\n";
@@ -1034,10 +1207,60 @@ sub detecting_dependent_softwares {
         die "diamond:\tFailed\n\n";
     }
 
+    # 检测compleasm
+    $software_info = `compleasm --version 2>&1`;
+    if ($software_info =~ m/\d+\.\d+/) {
+        print STDERR "compleasm:\tOK\n";
+    }
+    else {
+        die "compleasm:\tFailed\n\n";
+    }
+
+    # 检测 PSAURON (optional, when --enable_psauron)
+    if ( $enable_psauron ) {
+        $software_info = `psauron --version 2>&1`;
+        if ($software_info =~ m/\d+/) {
+            print STDERR "PSAURON:\tOK\n";
+        }
+        else {
+            die "PSAURON:\tFailed\n\n";
+        }
+    }
+
+    # 检测 eggnog-mapper (optional, when --enable_eggnog)
+    if ( $enable_eggnog ) {
+        $software_info = `emapper.py --version 2>&1`;
+        if ($software_info =~ m/emapper/) {
+            print STDERR "eggnog-mapper:\tOK\n";
+        }
+        else {
+            die "eggnog-mapper:\tFailed\n\n";
+        }
+    }
+
+    # 检测 tRNAscan-SE / cmscan (optional, when --enable_ncrna)
+    if ( $enable_ncrna ) {
+        $software_info = `tRNAscan-SE --version 2>&1`;
+        if ($software_info =~ m/tRNAscan-SE/) {
+            print STDERR "tRNAscan-SE:\tOK\n";
+        }
+        else {
+            die "tRNAscan-SE:\tFailed\n\n";
+        }
+
+        $software_info = `cmscan -h 2>&1`;
+        if ($software_info =~ m/cmscan/) {
+            print STDERR "cmscan:\tOK\n";
+        }
+        else {
+            die "cmscan:\tFailed\n\n";
+        }
+    }
+
     print STDERR "============================================\n\n";
     my $pwd = `pwd`; chomp($pwd);
     print STDERR "\nPWD: $pwd\n";
-    print STDERR (localtime) . ": CMD: $0 $command_line_geta\n\n"; 
+    print STDERR (localtime) . ": CMD: $0 $command_line_geta\n\n";
 }
 
 
@@ -1048,24 +1271,42 @@ my $usage_english = <<USAGE;
 
 GETA (Genome-wide Electronic Tool for Annotation) is a pipeline software for predicting gene models from whole genome sequences. With one command, you can quickly obtain an accurate genome annotation GFF3 result file by providing the genome sequence, RNA-Seq raw data, and whole genome homologous protein sequences of closely related species. This program has two outstanding features: (1) accurate prediction, GETA outputs gene models with the normal amount, high BUSCO integrity, and accurate exon boundaries; (2) simple run, the operation is straightforward with a fully automated command that produces the final result.
 
-Current Version: 2.7.1
+Current Version: 3.0.0
 
 Usage:
     perl $0 [options]
 
 For example:
-    perl $0 --genome genome.fasta --RM_species_Dfam Embryophyta --RM_species_RepBase Embryophyta --pe1 libA.1.fq.gz,libB.1.fq.gz --pe2 libA.2.fq.gz,libB.2.fq.gz --protein homolog.fasta --augustus_species GETA_genus_species --HMM_db /opt/biosoft/bioinfomatics_databases/Pfam/PfamA,/opt/biosoft/bioinfomatics_databases/Pfam/PfamB --config /opt/biosoft/geta/conf_for_big_genome.txt --out_prefix out --gene_prefix GS01Gene --cpu 120
+    perl $0 --genome genome.fasta --RM_species_Dfam Embryophyta --long_reads long_reads.fq.gz --pe1 libA.1.fq.gz,libB.1.fq.gz --pe2 libA.2.fq.gz,libB.2.fq.gz --protein homolog.fasta --augustus_species GETA_genus_species --HMM_db /opt/biosoft/bioinfomatics_databases/Pfam/PfamA,/opt/biosoft/bioinfomatics_databases/Pfam/PfamB --config /opt/biosoft/geta/conf_for_big_genome.txt --out_prefix out --gene_prefix GS01Gene --cpu 120
 
 Parameters:
 [INPUT]
     --genome <string>    default: None, required
-    Enter the FASTA file of the genome sequence that you want to annotate. If the input genome file has repeats masked, you can skip the repeat sequence masking step by removing the --RM_species_Dfam,  --RM_species_RepBase, --RM_lib parameters and adding the --no_RepeatModeler parameter. In this instance, it is advised to hard mask the transposable sequences using base N and to soft mask simple or tandem repeats using lowercase characters.
+    Enter the FASTA file of the genome sequence that you want to annotate. If the input genome file has repeats masked, you can skip the repeat sequence masking step by removing the --RM_species_Dfam and --RM_lib parameters and adding the --no_RepeatModeler parameter. In this instance, it is advised to hard mask the transposable sequences using base N and to soft mask simple or tandem repeats using lowercase characters.
 
     --RM_species_Dfam | --RM_species <string>    default: None
     Enter the name of a species or class for RepeatMakser to perform a repeat sequence analysis for the genome using the HMM data of corresponding taxonomic species in the Dfam database. The file $software_dir/RepeatMasker_lineage.txt has the values that can be provided for this parameter to represent the class of species. For example, Eukaryota is for eukaryotes, Viridiplantae is for plants, Metazoa is for animals, and Fungi is for fungi. Before attempting to enter this parameter, the RepeatMasker program needed to be installed and the Dfam database needed to be configured. Note that due to its massive size, the Dfam database has been split up into nine partitions. By default, RepeatMasker only contains the zero root partition of the Dfam database, which is suitable for species such as mammals and fungi. If necessary, consider downloading the proper Dfam database partition and configuring it to RepeatMasker. For example, the 5th partition of the Dfam database is designated for Viridiplantae, while the 7th  partition is for Hymenoptera.
 
-    --RM_species_RepBase <string>    default: None
-    Enter the name of a species or class for RepeatMakser to perform a repeat sequence analysis for the genome using the nucleotide sequences of corresponding taxonomic species in the RepBase database. The file $software_dir/RepeatMasker_lineage.txt has the values that can be provided for this parameter to represent the class of species. For example, Eukaryota is for eukaryotes, Viridiplantae is for plants, Metazoa is for animals, and Fungi is for fungi. Before attempting to enter this parameter, the RepeatMasker program needed to be installed and the RepBase database needed to be configured. Note that RepBase is no longer providing free downloads and that the most recent version of the database, 20181026, is older and contains few repetitive sequence data.
+    --long_reads <string>    default: None
+    Enter a long-read transcriptome sequencing data file (FASTQ or FASTA format). Supports PacBio HiFi, PacBio CLR, and Oxford Nanopore long-read data. When long reads are provided, minimap2 is used for alignment and IsoQuant for transcript reconstruction and gene prediction. Long reads can be used alone or combined with short reads for better results.
+
+    --long_read_type <string>    default: pacbio_hifi
+    Set the type of long-read data. Accepted values are pacbio_hifi, pacbio_clr, or nanopore. This parameter optimizes minimap2 and IsoQuant alignment and analysis parameters.
+
+    --aligner <string>    default: star
+    Set the short-read alignment tool. Accepted values are star or hisat2. STAR is faster and more accurate but requires more memory.
+
+    --TE_annotator <string>    default: repeatmodeler
+    Set the transposable element annotation tool. Accepted values are repeatmodeler or edta. EDTA provides more comprehensive TE annotation but takes longer to run.
+
+    --enable_psauron    default: None
+    When this parameter is added, PSAURON is used to score gene model quality.
+
+    --enable_eggnog    default: None
+    When this parameter is added, eggNOG-mapper is used for functional annotation of predicted proteins.
+
+    --enable_ncrna    default: None
+    When this parameter is added, tRNAscan-SE and Infernal (cmscan) are used for non-coding RNA annotation.
 
     --RM_lib <string>    default: None
     Enter a FASTA file and use the repetitive sequence to conduct genome-wide repeat analysis. This file is usually the output of RepeatModeler software's analysis of the entire genome sequence, indicating the repeated sequences across the genome. By default, the GETA program calls RepeatModeler to look up the entire genome sequence and acquire the species' repetitive sequence database. RepeatMakser is then called to search the repeated sequences. After adding this argument, the time-consuming RepeatModler step is skipped, which may significantly reduce the running time of the program. Additionally, the software supports the simultaneous use of the --RM_species_Dfam, --RM_species_RepBase, and --RM_lib arguments, so that multiple methods can be used for repeat sequence analysis, and eventually multiple results can be combined and the result of any method can be recognized.
@@ -1101,7 +1342,7 @@ Parameters:
     Enter a parameter profile path to set the detailed parameters of other commands called by this program. If this parameter is left unset, When the genome size exceeds 1GB, the software installation directory's conf_for_big_genome.txt configuration file is automatically used. conf_for_small_genome.txt for genome size < 50MB, conf_all_defaults.txt for genome size between 50MB and 1GB.  Additionally, the thresholds for filtering the gene models typically need to be adjusted when GETA predicts an abnormally high number of genes. Then, the GETA pipeline can be rerun by setting this parameter to a new configuration file that is made by modifying the contents of the conf_all_defaults.txt file in the software installation directory.
 
     --BUSCO_lineage_dataset <string>    default: None
-    Enter one or more BUSCO databases, the program will additionally perform BUSCO analysis on the whole genome protein sequences obtained by gene prediction. This parameter supports the input of multiple BUSCO databases, separated by commas. The information contained in the $software_dir/BUSCO_lineages_list.2021-12-14.txt file can be used to choose the proper BUSCO databases. Finally, the BUSCO results are exported to the 7.output_gene_models subdirectory and to the gene_prediction.summary file.
+    Enter one or more BUSCO lineage dataset names, the program will additionally perform compleasm analysis on the whole genome protein sequences obtained by gene prediction. This parameter supports the input of multiple dataset names, separated by commas. The compleasm results are exported to the 6.output_gene_models subdirectory and to the gene_prediction.summary file.
 
 [OUTPUT]
     --out_prefix <string>    default: out
@@ -1129,15 +1370,6 @@ Parameters:
     --genetic_code <int>    default: 1
     Enter the genetic code. The values for this parameter can be found on the NCBI Genetic Codes website at: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi. This parameter is mainly effective for the gene prediction steps through homologous proteins, as well as the situation where start and stop codon information is used for filling the end of incomplete gene models.
 
-    --homolog_prediction_method <string>    default: all
-    Enter a method for gene prediction using homologous proteins. The value can be set to exonerate, genewise, gth, or all. This parameter supports the input of multiple methods, separated by commas. If the value was set to all, it indicates all three methods were used. The more methods you use, the more computation time you consume, but the better the result will be. Of the three methods, exonerate and genewise produced similar accuracy results, but gth showed a significant decrease in sensitivity and a significant increase in specificity. The following table shows the accuracy of the prediction results for the Oryza sativa genome using three methods. We compared the annotation results of 28736 gene models on NCBI to assess four accuracy metrics: gene level sensitivity, gene level specificity, exon level specificity, and exon level specificity. It is obvious that using multiple methods for gene prediction, combining results, and then filtering can result in a closer number of gene models to the actual number of genes and more accurate results. In addition, this parameter has a higher priority and can override the homolog_prediction parameter value in the parameter configuration file specified by --config.
-    Method     Gene_num    gene_sensitivity    gene_specificity    exon_sensitivity    exon_specificity
-    exonerate  31310       46.17%              42.37%              62.15%              78.45%
-    genewise   32407       46.47%              41.21%              64.66%              77.15%
-    gth        9116        20.52%              64.70%              32.71%              90.87%
-    all        32293       48.19%              42.89%              66.91%              78.00%
-    filtered   23857       45.19%              54.44%              64.44%              83.72%
-
     --optimize_augustus_method <int>    default: 3
     Enter the method for AUGUSTUS parameters optimization. 1, indicates that only BGM2AT.optimize_augustus is called for optimization, which can fully utilize all CPU threads and run at a fast speed; 2, indicates that only the optimize_augustus.pl program provided by the AUGUSTUS software is used for optimization, which is slower than the first method, but the results are better; 3, indicates that BGM2AT.optimize_augustus is optimized first, then the optimize_augustus.pl program provided by the AUGUSTUS software is used, followed by further optimization. This method prioritizes both speed and effectiveness. It can cover the values of the same parameters specified in the --config parameter configuration file for BGM2AT.
     
@@ -1151,23 +1383,28 @@ Parameters:
 This software has been tested and successfully run on Rocky 9.2 system using the following dependent software versions:
 
 01. ParaFly (Version 0.1.0)
-02. GNU parallel (Version 20230722)
-03. RepeatMasker (version: 4.1.6)
-04. RepeatModeler (version: 2.0.5)
-05. makeblastdb/rmblastn/tblastn/blastp (Version: 2.14.0)
-06. java (version: jdk-20.0.1)
-07. hisat2 (version: 2.1.0)
-08. samtools (version: 1.17)
-09. mmseqs (version 15-6f452)
-10. genewise (version: 2.4.1)
-11. gth (Vesion: 1.7.3)
-12. exonerate (Vesion: 2.2.0)
-13. augustus/etraining (version: 3.5.0)
-14. diamond (version 2.1.8)
-15. hmmscan (version: 3.3.2)
-16. busco (Version: 5.4.7)
+02. RepeatMasker (version: 4.1.6)
+03. RepeatModeler (version: 2.0.5)
+04. makeblastdb/rmblastn/tblastn/blastp (Version: 2.14.0)
+05. STAR (version: 2.7.11b)
+06. hisat2 (version: 2.1.0)
+07. samtools (version: 1.17)
+08. fastp (version: 0.23.4)
+09. minimap2 (version: 2.26)
+10. miniprot (version: 0.12)
+11. isoquant.py (version: 3.4.0)
+12. gffread (version: 0.12.7)
+13. TransDecoder (version: 5.7.1)
+14. augustus/etraining (version: 3.5.0)
+15. diamond (version 2.1.8)
+16. hmmscan (version: 3.3.2)
+17. compleasm (version: 0.2.6)
+18. EDTA (version: 2.2.0) [optional, when --TE_annotator edta]
+19. PSAURON [optional, when --enable_psauron]
+20. eggnog-mapper [optional, when --enable_eggnog]
+21. tRNAscan-SE / cmscan [optional, when --enable_ncrna]
 
-Version of GETA: 2.7.1
+Version of GETA: 3.0.0
 
 USAGE
 
@@ -1194,8 +1431,15 @@ sub parsing_input_parameters {
 
     $protein = abs_path($protein) if $protein;
 
+    if ( $long_reads ) {
+        my @files; foreach ( split /,/, $long_reads ) { push @files, abs_path($_); } $long_reads = join ",", @files;
+    }
+    $long_read_type ||= "pacbio_hifi";
+    $aligner ||= "star";
+    $TE_annotator ||= "repeatmodeler";
+
     die "No genome sequences was found in file $genome\n" unless -s $genome;
-    die "No RNA-Seq short reads or homologous proteins was input\n" unless (($pe1 && $pe2) or $single_end or $sam or $protein);
+    die "No long reads, RNA-Seq short reads, or homologous proteins was input\n" unless ($long_reads or ($pe1 && $pe2) or $single_end or $sam or $protein);
     # 检测AUGUSTUS的环境变量\$AUGUSTUS_CONFIG_PATH
     die "The directory assigned by \$AUGUSTUS_CONFIG_PATH was not exists.\n" unless -e $ENV{"AUGUSTUS_CONFIG_PATH"};
 
@@ -1544,11 +1788,8 @@ sub choose_config_file {
     close IN;
 
     # 覆盖%config数据
-    $homolog_prediction_method ||= "all";
-    $homolog_prediction_method = "exonerate,genewise,gth" if $homolog_prediction_method eq "all";
-    foreach ( split /,/, $homolog_prediction_method ) {
-        die "Error: The supported value of --homolog_prediction_method should be exonerate, genewise or gth, you input '$_' was wrong.\n" unless ( $_ eq "exonerate" or $_ eq "genewise" or $_ eq "gth" );
-    }
+    # Update homolog_prediction to use miniprot method by default
+    $homolog_prediction_method ||= "miniprot";
     $config{"homolog_prediction"} =~ s/--method \S+/--method $homolog_prediction_method/;
 
     $optimize_augustus_method ||= 3;
@@ -1572,6 +1813,16 @@ sub choose_config_file {
     }
 
     return 1;
+}
+
+# Calculate STAR genomeSAindexNbases parameter based on genome size
+sub calc_star_index_size {
+    my $genome_size = $_[0];
+    # STAR manual: genomeSAindexNbases = min(14, log2(genome_size)/2 - 1)
+    my $nbases = int(log($genome_size) / log(2) / 2 - 1);
+    $nbases = 14 if $nbases > 14;
+    $nbases = 4 if $nbases < 4;
+    return $nbases;
 }
 
 # 子程序，用于执行调用的Linux命令。程序运行完毕后，生成.ok文件。
