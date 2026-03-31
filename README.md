@@ -10,7 +10,7 @@ Genome ──> Step 1: Repeat Masking (RepeatModeler/EDTA + RepeatMasker)
               ├──> Step 2: Homolog Prediction (miniprot)
               |
               ├──> Step 3: Transcript Prediction
-              |      Long reads:  minimap2 → IsoQuant → SQANTI3 → TransDecoder
+              |      Long reads:  minimap2 → IsoQuant → TransDecoder
               |      Short reads: fastp → STAR → assembly → ORF (optional)
               |      Hybrid: short-read junctions correct long-read splicing
               |
@@ -29,18 +29,21 @@ Genome ──> Step 1: Repeat Masking (RepeatModeler/EDTA + RepeatMasker)
 # Long reads + homolog proteins (recommended)
 perl bin/geta.pl --genome genome.fa \
      --long_reads flnc.bam --long_read_type pacbio_hifi \
-     --protein homolog.fa --cpu 48
+     --protein homolog.fa --HMM_db /path/to/Pfam-A.hmm \
+     --RM_species_Dfam Viridiplantae --cpu 48
 
 # Long reads + short reads assist (best quality)
 perl bin/geta.pl --genome genome.fa \
      --long_reads flnc.bam --long_read_type pacbio_hifi \
      --pe1 lib.1.fq.gz --pe2 lib.2.fq.gz \
-     --protein homolog.fa --cpu 48
+     --protein homolog.fa --HMM_db /path/to/Pfam-A.hmm \
+     --RM_species_Dfam Viridiplantae --cpu 48
 
 # Short reads only
 perl bin/geta.pl --genome genome.fa \
      --pe1 lib.1.fq.gz --pe2 lib.2.fq.gz \
-     --protein homolog.fa --cpu 48
+     --protein homolog.fa --HMM_db /path/to/Pfam-A.hmm \
+     --RM_species_Dfam Viridiplantae --cpu 48
 ```
 
 ## Installation
@@ -64,12 +67,30 @@ mamba install -c bioconda -c conda-forge \
 pip install isoquant compleasm
 ```
 
-SQANTI3 must be installed separately following [its documentation](https://github.com/ConesaLab/SQANTI3).
-
 Set the AUGUSTUS config path:
 
 ```bash
 export AUGUSTUS_CONFIG_PATH=/path/to/augustus/config/
+```
+
+### Databases
+
+**Pfam** (recommended, for gene model filtering in Step 5):
+
+```bash
+wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
+gunzip Pfam-A.hmm.gz
+hmmpress Pfam-A.hmm
+# Then pass to pipeline: --HMM_db /path/to/Pfam-A.hmm
+```
+
+**Rfam** (optional, for ncRNA annotation with `--enable_ncrna`):
+
+```bash
+wget https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz
+gunzip Rfam.cm.gz
+cmpress Rfam.cm
+# Then pass to pipeline: --Rfam_db /path/to/Rfam.cm
 ```
 
 ### Optional dependencies
@@ -100,7 +121,8 @@ Install only if you need the corresponding feature:
 | `--protein <file>` | Homologous protein FASTA (3-10 species recommended) |
 | `--RM_species_Dfam <str>` | Dfam clade for RepeatMasker (e.g. `Viridiplantae`, `Metazoa`) |
 | `--RM_lib <file>` | Custom repeat library FASTA |
-| `--HMM_db <file>` | Pfam HMM database for gene filtering (comma-separated) |
+| `--HMM_db <file>` | Pfam HMM database for gene model filtering (comma-separated). See [Databases](#databases) |
+| `--BLASTP_db <file>` | Diamond database for gene model filtering (default: built from `--protein`) |
 | `--BUSCO_lineage_dataset <str>` | compleasm lineage name(s) |
 
 At least one of `--long_reads`, `--pe1/--pe2`, `--se`, `--sam`, or `--protein` is required.
@@ -121,6 +143,7 @@ At least one of `--long_reads`, `--pe1/--pe2`, `--se`, `--sam`, or `--protein` i
 | `--enable_psauron` | off | PSAURON gene model quality scoring |
 | `--enable_eggnog` | off | eggNOG-mapper functional annotation |
 | `--enable_ncrna` | off | tRNAscan-SE + Infernal ncRNA annotation |
+| `--Rfam_db <file>` | - | Rfam CM database path (required if `--enable_ncrna` and want cmscan) |
 | `--out_prefix` | out | Output file prefix |
 | `--gene_prefix` | gene | Gene ID prefix in GFF3 |
 | `--delete_unimportant_intermediate_files` | off | Clean up after completion |
@@ -189,7 +212,6 @@ perl bin/geta.pl --genome genome.fa --long_reads direct_rna.fastq \
 - GETA: Chen et al. [github.com/chenlianfu/geta](https://github.com/chenlianfu/geta)
 - miniprot: Li H. (2023) *Bioinformatics* 39(1):btad014
 - IsoQuant: Prjibelski et al. (2023) *Nature Biotechnology*
-- SQANTI3: Pardo-Palacios et al. (2024) *Nature Methods*
 - AUGUSTUS: Stanke et al. (2006) *Bioinformatics*
 
 ## License
