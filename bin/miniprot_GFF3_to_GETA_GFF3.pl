@@ -104,6 +104,7 @@ open IN, $input_gff or die "Can not open file $input_gff, $!";
 my %mrna_data;      # mRNA_ID => { chr, start, end, strand, identity, positive, target_name, target_start, target_end, score, rank, frameshift, stopcodon, protein_length }
 my %mrna_cds;       # mRNA_ID => [ [chr, start, end, strand, phase, target_start, target_end], ... ]
 my %mrna_has_stop;  # mRNA_ID => 1 if stop_codon feature present
+my %stop_codon_coords;  # mRNA_ID => [start, end] of stop_codon feature
 my @mrna_order;     # maintain input order
 my %paf_data;       # mRNA_ID => PAF line data (AS score, etc.)
 
@@ -217,6 +218,7 @@ while (<IN>) {
         }
         my $parent = $attrs{Parent} || $current_mRNA_id;
         $mrna_has_stop{$parent} = 1;
+        $stop_codon_coords{$parent} = [$start, $end];
     }
 }
 close IN;
@@ -456,19 +458,26 @@ sub generate_gene_gff3 {
     my $gene_start = $cds_list[0][1];
     my $gene_end = $cds_list[-1][2];
 
-    # If stop_codon feature exists, the gene region may extend 3bp beyond last CDS
-    if ($mrna_has_stop{$mRNA_id}) {
-        if ($strand eq "+") {
-            my $stop_end = $cds_list[-1][2] + 3;
-            $gene_end = $stop_end if $stop_end <= length($genome_seq{$chr} || "");
-            # Actually include stop codon in last CDS (GETA convention: last CDS includes stop codon)
-            $cds_list[-1][2] += 3 if ($cds_list[-1][2] + 3) <= length($genome_seq{$chr} || "");
+    # If stop_codon feature exists, extend CDS to include stop codon only if not already included.
+    # Since miniprot v0.13, CDS features already include the stop codon, so blindly adding 3bp
+    # would cause a 3bp over-extension.
+    if ( $mrna_has_stop{$mRNA_id} ) {
+        my ($stop_start, $stop_end) = @{$stop_codon_coords{$mRNA_id}};
+        if ( $strand eq "+" ) {
+            # Check if last CDS already includes the stop codon
+            if ( $cds_list[-1][2] < $stop_end ) {
+                $cds_list[-1][2] = $stop_end;  # Extend to stop codon end
+            }
         }
         else {
-            my $stop_start = $cds_list[0][1] - 3;
-            $gene_start = $stop_start if $stop_start >= 1;
-            $cds_list[0][1] -= 3 if ($cds_list[0][1] - 3) >= 1;
+            # Check if first CDS (5' on - strand) already includes the stop codon
+            if ( $cds_list[0][1] > $stop_start ) {
+                $cds_list[0][1] = $stop_start;  # Extend to stop codon start
+            }
         }
+        # Update gene boundaries to include stop codon
+        $gene_start = $cds_list[0][1] if $cds_list[0][1] < $gene_start;
+        $gene_end = $cds_list[-1][2] if $cds_list[-1][2] > $gene_end;
     }
 
     # Calculate introns from CDS
@@ -486,10 +495,10 @@ sub generate_gene_gff3 {
     my $gff3_out = "";
 
     # Gene line
-    $gff3_out .= "$chr\t$source\tgene\t$gene_start\t$gene_end\t.\t$strand\t.\tID=$geneID;Name=$geneID;Type=$type;Homolog_name=$homolog_name;Homolog_length=$homolog_length;Blastx_coverage=$coverage_pct\%;Blastx_identity=$identity_pct;Source=$source;\n";
+    $gff3_out .= "$chr\t$source\tgene\t$gene_start\t$gene_end\t.\t$strand\t.\tID=$geneID;Name=$geneID;Type=$type;Homolog_name=$homolog_name;Homolog_length=$homolog_length;Homolog_coverage=$coverage_pct\%;Homolog_identity=$identity_pct;Source=$source;\n";
 
     # mRNA line
-    $gff3_out .= "$chr\t$source\tmRNA\t$gene_start\t$gene_end\t.\t$strand\t.\tID=$geneID.mRNA;Name=$geneID.mRNA;Parent=$geneID;Type=$type;Homolog_name=$homolog_name;Homolog_length=$homolog_length;Blastx_coverage=$coverage_pct\%;Blastx_identity=$identity_pct;Source=$source;\n";
+    $gff3_out .= "$chr\t$source\tmRNA\t$gene_start\t$gene_end\t.\t$strand\t.\tID=$geneID.mRNA;Name=$geneID.mRNA;Parent=$geneID;Type=$type;Homolog_name=$homolog_name;Homolog_length=$homolog_length;Homolog_coverage=$coverage_pct\%;Homolog_identity=$identity_pct;Source=$source;\n";
 
     # CDS and exon lines (sorted by position for frame calculation)
     my ($frame, $length, $num) = (0, 0, 0);

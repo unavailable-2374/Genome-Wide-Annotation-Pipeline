@@ -147,7 +147,7 @@ unless (-e "$tmp_dir/b.isoquant.ok") {
         $isoquant_data_type = "nanopore";
     }
 
-    $cmdString = "isoquant.py --reference $input_genome --bam $tmp_dir/a.minimap2/sorted.bam --data_type $isoquant_data_type --complete_genedb --threads $cpu --output $tmp_dir/b.isoquant/isoquant_out --prefix lr";
+    $cmdString = "isoquant.py --reference $input_genome --bam $tmp_dir/a.minimap2/sorted.bam --data_type $isoquant_data_type --threads $cpu --output $tmp_dir/b.isoquant/isoquant_out --prefix lr";
 
     # Add illumina BAM for junction correction if provided
     if ( $illumina_bam ) {
@@ -165,14 +165,14 @@ else {
 }
 
 
-# Step c: SQANTI3 quality control and filtering
-print STDERR "\nStep c: SQANTI3 quality control and filtering " . "(" . (localtime) . ")" . "\n";
-mkdir "$tmp_dir/c.sqanti3" unless -e "$tmp_dir/c.sqanti3";
-unless (-e "$tmp_dir/c.sqanti3.ok") {
-    chdir "$tmp_dir/c.sqanti3"; print STDERR "PWD: $tmp_dir/c.sqanti3\n";
+# Step c: TransDecoder ORF prediction (using IsoQuant output directly)
+print STDERR "\nStep c: TransDecoder ORF prediction " . "(" . (localtime) . ")" . "\n";
+mkdir "$tmp_dir/c.transdecoder" unless -e "$tmp_dir/c.transdecoder";
+unless (-e "$tmp_dir/c.transdecoder.ok") {
+    chdir "$tmp_dir/c.transdecoder"; print STDERR "PWD: $tmp_dir/c.transdecoder\n";
 
-    # Find the IsoQuant GTF output - IsoQuant uses different output paths depending on version
-    my $isoquant_gtf = "$tmp_dir/b.isoquant/isoquant_out/lr.transcript_models.gtf";
+    # Find the IsoQuant GTF output - IsoQuant with --output DIR --prefix lr creates DIR/lr/lr.transcript_models.gtf
+    my $isoquant_gtf = "$tmp_dir/b.isoquant/isoquant_out/lr/lr.transcript_models.gtf";
     unless (-e $isoquant_gtf) {
         # Try alternative paths that IsoQuant may use
         my @candidates = glob("$tmp_dir/b.isoquant/isoquant_out/lr*/lr.transcript_models.gtf");
@@ -191,71 +191,43 @@ unless (-e "$tmp_dir/c.sqanti3.ok") {
     }
     print STDERR (localtime) . ": Using IsoQuant GTF: $isoquant_gtf\n";
 
-    # Run SQANTI3 QC
-    $cmdString = "sqanti3_qc.py $isoquant_gtf $input_genome --output sqanti3_out --dir $tmp_dir/c.sqanti3/sqanti3_dir -t $cpu";
-    print STDERR (localtime) . ": CMD: $cmdString\n";
-    system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
+    # Map genetic code number to TransDecoder -G string value
+    my %genetic_code_to_td = (
+        1 => "Universal",
+        6 => "Ciliate",
+        10 => "Euplotid",
+        12 => "Candida",
+        26 => "Pachysolen_tannophilus",
+    );
+    my $td_genetic_code = $genetic_code_to_td{$genetic_code} || "Universal";
 
-    # Run SQANTI3 rules-based filter
-    $cmdString = "sqanti3_filter.py rules $tmp_dir/c.sqanti3/sqanti3_dir/sqanti3_out_classification.txt --isoforms $tmp_dir/c.sqanti3/sqanti3_dir/sqanti3_out_corrected.gtf --gtf $tmp_dir/c.sqanti3/sqanti3_dir/sqanti3_out_corrected.gtf -o filtered";
-    print STDERR (localtime) . ": CMD: $cmdString\n";
-    system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
-
-    chdir "$tmp_dir";
-    open OUT, ">", "$tmp_dir/c.sqanti3.ok" or die $!; close OUT;
-}
-else {
-    print STDERR "Skip Step c for the file c.sqanti3.ok exists\n";
-}
-
-
-# Step d: TransDecoder ORF prediction
-print STDERR "\nStep d: TransDecoder ORF prediction " . "(" . (localtime) . ")" . "\n";
-mkdir "$tmp_dir/d.transdecoder" unless -e "$tmp_dir/d.transdecoder";
-unless (-e "$tmp_dir/d.transdecoder.ok") {
-    chdir "$tmp_dir/d.transdecoder"; print STDERR "PWD: $tmp_dir/d.transdecoder\n";
-
-    # Find the filtered GTF from SQANTI3
-    my $filtered_gtf = "$tmp_dir/c.sqanti3/filtered.filtered.gtf";
-    unless (-e $filtered_gtf) {
-        # Try alternative names SQANTI3 filter may produce
-        my @candidates = glob("$tmp_dir/c.sqanti3/filtered*.gtf");
-        if (@candidates) {
-            $filtered_gtf = $candidates[0];
-        }
-        else {
-            die "Error: Cannot find SQANTI3 filtered GTF output.\n";
-        }
-    }
-    print STDERR (localtime) . ": Using filtered GTF: $filtered_gtf\n";
-
-    # Extract transcript sequences from filtered GTF
-    $cmdString = "gffread $filtered_gtf -g $input_genome -w $tmp_dir/d.transdecoder/filtered_transcripts.fa";
+    # Extract transcript sequences from IsoQuant GTF
+    $cmdString = "gffread $isoquant_gtf -g $input_genome -w $tmp_dir/c.transdecoder/transcripts.fa";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     # TransDecoder: find long ORFs
-    $cmdString = "TransDecoder.LongOrfs -t $tmp_dir/d.transdecoder/filtered_transcripts.fa -O $tmp_dir/d.transdecoder --genetic_code $genetic_code";
+    $cmdString = "TransDecoder.LongOrfs -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder -G $td_genetic_code";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     # TransDecoder: predict likely coding regions
-    $cmdString = "TransDecoder.Predict -t $tmp_dir/d.transdecoder/filtered_transcripts.fa -O $tmp_dir/d.transdecoder --single_best_only --genetic_code $genetic_code";
+    $cmdString = "TransDecoder.Predict -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder --single_best_only -G $td_genetic_code";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
-    # Convert filtered GTF to alignment GFF3 for TransDecoder utility
-    $cmdString = "TransDecoder.Util.gtf_to_alignment_gff3.pl $filtered_gtf > $tmp_dir/d.transdecoder/transcript_alignments.gff3";
+    # Convert IsoQuant GTF to alignment GFF3 for TransDecoder utility
+    $cmdString = "gtf_to_alignment_gff3.pl $isoquant_gtf > $tmp_dir/c.transdecoder/transcript_alignments.gff3";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     # Map transcript-based ORF coordinates back to genome coordinates
     # TransDecoder output location varies: check both -O output dir and default location
-    my $transdecoder_gff3 = "$tmp_dir/d.transdecoder/filtered_transcripts.fa.transdecoder.gff3";
+    my $transdecoder_gff3 = "$tmp_dir/c.transdecoder/transcripts.fa.transdecoder.gff3";
     unless (-e $transdecoder_gff3) {
-        $transdecoder_gff3 = "filtered_transcripts.fa.transdecoder.gff3";
+        $transdecoder_gff3 = "transcripts.fa.transdecoder.gff3";
         unless (-e $transdecoder_gff3) {
-            my @candidates = glob("$tmp_dir/d.transdecoder/*.transdecoder.gff3");
+            my @candidates = glob("$tmp_dir/c.transdecoder/*.transdecoder.gff3");
             if (@candidates) {
                 $transdecoder_gff3 = $candidates[0];
             }
@@ -265,25 +237,25 @@ unless (-e "$tmp_dir/d.transdecoder.ok") {
         }
     }
 
-    $cmdString = "TransDecoder.Util.cdna_alignment_orf_to_genome_orf.pl $transdecoder_gff3 $tmp_dir/d.transdecoder/transcript_alignments.gff3 $tmp_dir/d.transdecoder/filtered_transcripts.fa > $tmp_dir/d.transdecoder/genome_based_orf.gff3";
+    $cmdString = "cdna_alignment_orf_to_genome_orf.pl $transdecoder_gff3 $tmp_dir/c.transdecoder/transcript_alignments.gff3 $tmp_dir/c.transdecoder/transcripts.fa > $tmp_dir/c.transdecoder/genome_based_orf.gff3";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     chdir "$tmp_dir";
-    open OUT, ">", "$tmp_dir/d.transdecoder.ok" or die $!; close OUT;
+    open OUT, ">", "$tmp_dir/c.transdecoder.ok" or die $!; close OUT;
 }
 else {
-    print STDERR "Skip Step d for the file d.transdecoder.ok exists\n";
+    print STDERR "Skip Step c for the file c.transdecoder.ok exists\n";
 }
 
 
-# Step e: Post-processing
-print STDERR "\nStep e: Post-processing and output " . "(" . (localtime) . ")" . "\n";
-mkdir "$tmp_dir/e.postprocessing" unless -e "$tmp_dir/e.postprocessing";
-chdir "$tmp_dir/e.postprocessing"; print STDERR "PWD: $tmp_dir/e.postprocessing\n";
+# Step d: Post-processing
+print STDERR "\nStep d: Post-processing and output " . "(" . (localtime) . ")" . "\n";
+mkdir "$tmp_dir/d.postprocessing" unless -e "$tmp_dir/d.postprocessing";
+chdir "$tmp_dir/d.postprocessing"; print STDERR "PWD: $tmp_dir/d.postprocessing\n";
 
 # e.1: Parse genome_based_orf.gff3 from TransDecoder into GETA-format GFF3
-unless (-e "$tmp_dir/e.postprocessing.ok") {
+unless (-e "$tmp_dir/d.postprocessing.ok") {
 
     # Read genome sequences for integrity checking
     my %genome_seq;
@@ -308,7 +280,7 @@ unless (-e "$tmp_dir/e.postprocessing.ok") {
     foreach (split /,/, $stop_codon_str) { $stop_codons{$_} = 1; }
 
     # Parse TransDecoder genome-based GFF3
-    my $td_gff3 = "$tmp_dir/d.transdecoder/genome_based_orf.gff3";
+    my $td_gff3 = "$tmp_dir/c.transdecoder/genome_based_orf.gff3";
     die "Error: Cannot find TransDecoder genome-based ORF GFF3: $td_gff3\n" unless -e $td_gff3;
 
     # Parse the TransDecoder output into gene models
@@ -496,14 +468,14 @@ unless (-e "$tmp_dir/e.postprocessing.ok") {
 
     # e.4: Write output alignment GFF3 (TransDecoder raw genome-based ORF GFF3)
     if ( $output_alignment_GFF3 ) {
-        $cmdString = "cp $tmp_dir/d.transdecoder/transcript_alignments.gff3 $output_alignment_GFF3";
+        $cmdString = "cp $tmp_dir/c.transdecoder/transcript_alignments.gff3 $output_alignment_GFF3";
         print STDERR (localtime) . ": CMD: $cmdString\n";
         system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
     }
 
     # e.5: Use GFF3Clear to clean up the gene models
     # First, write the raw GETA-format GFF3
-    open OUT, ">", "$tmp_dir/e.postprocessing/lr_raw_models.gff3" or die "Error: Can not create file lr_raw_models.gff3, $!";
+    open OUT, ">", "$tmp_dir/d.postprocessing/lr_raw_models.gff3" or die "Error: Can not create file lr_raw_models.gff3, $!";
     foreach my $chr ( sort keys %gff3_output ) {
         my @genes = sort { $a->{start} <=> $b->{start} } @{$gff3_output{$chr}};
         foreach my $g (@genes) {
@@ -514,11 +486,11 @@ unless (-e "$tmp_dir/e.postprocessing.ok") {
 
     # e.6: Use GFF3_merging_and_removing_redundancy to remove redundant models, then GFF3Clear
     my @cmdStrings;
-    push @cmdStrings, "$bin_path/GFF3_merging_and_removing_redundancy_Parallel --cpu $cpu $input_genome --first_file_score 0.0 $tmp_dir/e.postprocessing/lr_raw_models.gff3 > $tmp_dir/e.postprocessing/lr_merged.gff3 2> /dev/null";
-    push @cmdStrings, "$bin_path/GFF3Clear --GFF3_source LongReads --genome $input_genome --gene_prefix lr --no_attr_add $tmp_dir/e.postprocessing/lr_merged.gff3 > $tmp_dir/e.postprocessing/lr_cleaned.gff3 2> /dev/null";
-    push @cmdStrings, "rm -rf $tmp_dir/e.postprocessing/lr_merged.gff3";
+    push @cmdStrings, "$bin_path/GFF3_merging_and_removing_redundancy_Parallel --cpu $cpu $input_genome --first_file_score 0.0 $tmp_dir/d.postprocessing/lr_raw_models.gff3 > $tmp_dir/d.postprocessing/lr_merged.gff3 2> /dev/null";
+    push @cmdStrings, "$bin_path/GFF3Clear --GFF3_source LongReads --genome $input_genome --gene_prefix lr --no_attr_add $tmp_dir/d.postprocessing/lr_merged.gff3 > $tmp_dir/d.postprocessing/lr_cleaned.gff3 2> /dev/null";
+    push @cmdStrings, "rm -rf $tmp_dir/d.postprocessing/lr_merged.gff3";
 
-    &execute_cmds(@cmdStrings, "$tmp_dir/e.GFF3Clear.ok");
+    &execute_cmds(@cmdStrings, "$tmp_dir/d.GFF3Clear.ok");
 
     # e.7: If --homolog_gene_models provided, fill incomplete models
     my @codon_info = &codon_table();
@@ -528,24 +500,24 @@ unless (-e "$tmp_dir/e.postprocessing.ok") {
     my $stop_codon_list = join ",", sort keys %stop_codon_table;
 
     if ( $homolog_gene_models ) {
-        $cmdString = "rm -rf $tmp_dir/e.FillingByHomolog.ok $tmp_dir/e.fillingEnds.ok";
-        &execute_cmds($cmdString, "$tmp_dir/e.FillingByHomolog.yes");
+        $cmdString = "rm -rf $tmp_dir/d.FillingByHomolog.ok $tmp_dir/d.fillingEnds.ok";
+        &execute_cmds($cmdString, "$tmp_dir/d.FillingByHomolog.yes");
 
-        $cmdString = "$bin_path/GFF3_filling_gene_models_Parallel --cpu $cpu --tmp_dir $tmp_dir/e.postprocessing/FillingByHomolog --ouput_filling_detail_tab $tmp_dir/e.postprocessing/FillingByHomolog.tab --start_codon $start_codon_list --stop_codon $stop_codon_list --attribute_for_filling_complete Filled_by_homolog=True $input_genome $tmp_dir/e.postprocessing/lr_cleaned.gff3 $homolog_gene_models > $tmp_dir/e.postprocessing/lr_filledByHomolog.gff3";
-        &execute_cmds($cmdString, "$tmp_dir/e.FillingByHomolog.ok");
+        $cmdString = "$bin_path/GFF3_filling_gene_models_Parallel --cpu $cpu --tmp_dir $tmp_dir/d.postprocessing/FillingByHomolog --ouput_filling_detail_tab $tmp_dir/d.postprocessing/FillingByHomolog.tab --start_codon $start_codon_list --stop_codon $stop_codon_list --attribute_for_filling_complete Filled_by_homolog=True $input_genome $tmp_dir/d.postprocessing/lr_cleaned.gff3 $homolog_gene_models > $tmp_dir/d.postprocessing/lr_filledByHomolog.gff3";
+        &execute_cmds($cmdString, "$tmp_dir/d.FillingByHomolog.ok");
     }
     else {
-        $cmdString = "cp -a $tmp_dir/e.postprocessing/lr_cleaned.gff3 $tmp_dir/e.postprocessing/lr_filledByHomolog.gff3";
-        &execute_cmds($cmdString, "$tmp_dir/e.FillingByHomolog.ok");
+        $cmdString = "cp -a $tmp_dir/d.postprocessing/lr_cleaned.gff3 $tmp_dir/d.postprocessing/lr_filledByHomolog.gff3";
+        &execute_cmds($cmdString, "$tmp_dir/d.FillingByHomolog.ok");
     }
 
     # e.8: Force-fill ends of incomplete gene models
-    $cmdString = "$bin_path/fillingEndsOfGeneModels --start_codon $start_codon_list --stop_codon $stop_codon_list $input_genome $tmp_dir/e.postprocessing/lr_filledByHomolog.gff3 > $tmp_dir/e.postprocessing/lr_fillEnd.gff3 2> $tmp_dir/e.postprocessing/fillingEndsOfGeneModels.log";
-    &execute_cmds($cmdString, "$tmp_dir/e.fillingEnds.ok");
+    $cmdString = "$bin_path/fillingEndsOfGeneModels --start_codon $start_codon_list --stop_codon $stop_codon_list $input_genome $tmp_dir/d.postprocessing/lr_filledByHomolog.gff3 > $tmp_dir/d.postprocessing/lr_fillEnd.gff3 2> $tmp_dir/d.postprocessing/fillingEndsOfGeneModels.log";
+    &execute_cmds($cmdString, "$tmp_dir/d.fillingEnds.ok");
 
     # e.9: Output raw GFF3 (before force-filling) if requested
     if ( $output_raw_GFF3 ) {
-        open IN, "$tmp_dir/e.postprocessing/lr_filledByHomolog.gff3" or die "Error: Can not open file lr_filledByHomolog.gff3, $!";
+        open IN, "$tmp_dir/d.postprocessing/lr_filledByHomolog.gff3" or die "Error: Can not open file lr_filledByHomolog.gff3, $!";
         my $raw_gff3_content = join "", <IN>;
         close IN;
         open OUT, ">", $output_raw_GFF3 or die "Error: Can not create file $output_raw_GFF3, $!";
@@ -559,10 +531,10 @@ unless (-e "$tmp_dir/e.postprocessing.ok") {
     }
 
     chdir "$tmp_dir";
-    open OUT, ">", "$tmp_dir/e.postprocessing.ok" or die $!; close OUT;
+    open OUT, ">", "$tmp_dir/d.postprocessing.ok" or die $!; close OUT;
 }
 else {
-    print STDERR "Skip Step e for the file e.postprocessing.ok exists\n";
+    print STDERR "Skip Step d for the file d.postprocessing.ok exists\n";
 }
 
 
@@ -573,7 +545,7 @@ print STDERR "Class B (Good gene models): Other complete gene models predicted b
 print STDERR "Class C (Fair gene models): Complete gene models after enforcing padding at the 5' or 3' end of the gene model.\n";
 print STDERR "Class D (Poor gene models): Incomplete gene models.\n";
 
-open IN, "$tmp_dir/e.postprocessing/lr_fillEnd.gff3" or die "Can not open file lr_fillEnd.gff3, $!";
+open IN, "$tmp_dir/d.postprocessing/lr_fillEnd.gff3" or die "Can not open file lr_fillEnd.gff3, $!";
 my ( $num0, $num1, $num2, $num3, $num4 ) = (0, 0, 0, 0, 0);
 $/ = "\n\n";
 while (<IN>) {
@@ -1012,11 +984,9 @@ Usage:
     (a) First, align long reads to the reference genome using minimap2, producing a sorted BAM file.
     (b) Then, use IsoQuant to discover transcript models from the long-read alignments. Optionally,
         short-read (Illumina) BAM can be provided for splice junction correction.
-    (c) Then, use SQANTI3 for quality control and filtering of discovered transcripts, removing
-        artifacts and low-quality isoforms.
-    (d) Then, use TransDecoder to predict ORFs on the filtered transcripts and map them back to
+    (c) Then, use TransDecoder to predict ORFs on the IsoQuant transcripts and map them back to
         genome coordinates.
-    (e) Finally, post-process the gene models: remove redundancy, optionally fill incomplete models
+    (d) Finally, post-process the gene models: remove redundancy, optionally fill incomplete models
         using homolog gene models, force-fill ends of incomplete models, classify gene models into
         4 quality tiers, and output the final GFF3.
 
@@ -1079,8 +1049,9 @@ Parameters:
     Number of CPU threads.
 
 Dependencies:
-    minimap2, samtools, isoquant.py, sqanti3_qc.py, sqanti3_filter.py, gffread,
-    TransDecoder.LongOrfs, TransDecoder.Predict, TransDecoder.Util.*
+    minimap2, samtools, isoquant.py, gffread,
+    TransDecoder.LongOrfs, TransDecoder.Predict, gtf_to_alignment_gff3.pl,
+    cdna_alignment_orf_to_genome_orf.pl
 
 USAGE
 

@@ -30,10 +30,10 @@ Parameters:
     输入一个物种或分类名称，以利于调用RepeatMasker程序运用Dfam数据库中相应物种分类的HMM数据信息进行重复序列分析。可以根据文件$software_dir/RepeatMasker_lineage.txt的内容查找适用于本参数的物种分类名称。例如，设置Eukaryota适合真核生物、Viridiplantae适合植物、Metazoa适合动物、Fungi适合真菌。当使用了该参数，需要先安装好RepeatMasker软件并配置好Dfam数据库。需要注意的是：Dfam数据库因为较大被分隔成了9份；而RepeatMasker默认仅带有Dfam数据库第0个root部分，适合哺乳动物或真菌等物种；若有需要，则考虑下载适合待分析物种的Dfam数据库并配置到RepeatMasker；例如，对植物物种进行分析则需要使用Dfam数据库第5个Viridiplantae部分，对膜翅目昆虫进行分析则需要使用Dfam数据库第7个Hymenoptera部分。
 
     --long_reads <string>    default: None
-    输入三代长读长转录组测序数据文件（FASTQ或FASTA格式）。支持PacBio HiFi、PacBio CLR和Oxford Nanopore等类型的长读长数据。当提供了长读长数据时，程序将使用minimap2进行比对，并通过IsoQuant进行转录本重建和基因预测。长读长数据可以单独使用，也可以与二代短读长数据联合使用以获得更好的结果。
+    输入三代长读长转录组测序数据文件（FASTQ或FASTA格式）。支持PacBio HiFi、Nanopore cDNA和Nanopore dRNA等类型的长读长数据。当提供了长读长数据时，程序将使用minimap2进行比对，并通过IsoQuant进行转录本重建和基因预测。长读长数据可以单独使用，也可以与二代短读长数据联合使用以获得更好的结果。
 
     --long_read_type <string>    default: pacbio_hifi
-    设置长读长数据的类型。可选值为pacbio_hifi、pacbio_clr或nanopore。该参数用于优化minimap2和IsoQuant的比对和分析参数。
+    设置长读长数据的类型。可选值为pacbio_hifi、nanopore_cdna或nanopore_drna。该参数用于优化minimap2和IsoQuant的比对和分析参数。
 
     --aligner <string>    default: star
     设置二代短读长数据的比对工具。可选值为star或hisat2。STAR比对速度更快且准确性更高，但需要更多内存。
@@ -157,7 +157,7 @@ my $usage_english = &get_usage_english();
 if (@ARGV==0){die $usage_english}
 
 my ($genome, $RM_species, $RM_species_Dfam, $RM_species_RepBase, $RM_lib, $no_RepeatModeler, $pe1, $pe2, $single_end, $sam, $strand_specific, $protein, $augustus_species, $HMM_db, $BLASTP_db, $config, $BUSCO_lineage_dataset);
-my ($long_reads, $long_read_type, $aligner, $TE_annotator, $enable_psauron, $enable_eggnog, $enable_ncrna);
+my ($long_reads, $long_read_type, $aligner, $TE_annotator, $enable_psauron, $enable_eggnog, $enable_ncrna, $Rfam_db);
 my ($out_prefix, $gene_prefix, $chinese_help, $help);
 my ($cpu, $max_used_read_num, $put_massive_temporary_data_into_memory, $genetic_code, $homolog_prediction_method, $optimize_augustus_method, $no_alternative_splicing_analysis, $delete_unimportant_intermediate_files);
 my ($cmdString, $cmdString1, $cmdString2, $cmdString3, $cmdString4, $cmdString5, @cmdString);
@@ -199,6 +199,7 @@ GetOptions(
     "enable_psauron!" => \$enable_psauron,
     "enable_eggnog!" => \$enable_eggnog,
     "enable_ncrna!" => \$enable_ncrna,
+    "Rfam_db:s" => \$Rfam_db,
 );
 
 if ( $chinese_help ) { die $usage_chinese }
@@ -295,10 +296,16 @@ elsif ( $no_RepeatModeler ) {
     $cmdString = "touch RepeatModeler_out.out";
 }
 elsif ( $TE_annotator eq "edta" ) {
+    my $genome_basename = basename($genome);
     $cmdString = "EDTA.pl --genome $genome --threads $cpu --overwrite 0 --sensitive 1 --anno 1 &> EDTA.log";
     &execute_cmds($cmdString, "EDTA.ok");
-    # EDTA outputs: $genome.mod.EDTA.TElib.fa (the TE library)
-    $cmdString = "$bin_path/para_RepeatMasker $config{'para_RepeatMasker'} --out_prefix RepeatModeler_out --lib ${genome}.mod.EDTA.TElib.fa --cpu $cpu --tmp_dir para_RepeatMasker.tmp $genome &> para_RepeatMasker.log";
+    # EDTA outputs to CWD based on the genome filename
+    my $edta_lib = "${genome_basename}.mod.EDTA.TElib.fa";
+    unless ( -s $edta_lib ) {
+        # Try absolute path version
+        $edta_lib = "${genome}.mod.EDTA.TElib.fa";
+    }
+    $cmdString = "$bin_path/para_RepeatMasker $config{'para_RepeatMasker'} --out_prefix RepeatModeler_out --lib $edta_lib --cpu $cpu --tmp_dir para_RepeatMasker.tmp $genome &> para_RepeatMasker.log";
 }
 else {
     $cmdString = "BuildDatabase -name species -engine ncbi $genome";
@@ -372,13 +379,14 @@ if ( $long_reads ) {
         chdir "$tmp_dir/3.transcript_prediction/short_read_support";
         print STDERR "\nPWD: $tmp_dir/3.transcript_prediction/short_read_support\n";
 
-        # fastp QC
+        # fastp QC (fastp has a hard limit of 16 threads)
+        my $fastp_threads = $cpu > 16 ? 16 : $cpu;
         my $fastp_cmd = "fastp";
         if ($pe1 && $pe2) {
-            $fastp_cmd .= " -i $pe1 -I $pe2 -o clean_1.fq.gz -O clean_2.fq.gz -w $cpu -j fastp.json -h fastp.html";
+            $fastp_cmd .= " -i $pe1 -I $pe2 -o clean_1.fq.gz -O clean_2.fq.gz -w $fastp_threads -j fastp.json -h fastp.html";
         }
         elsif ($single_end) {
-            $fastp_cmd .= " -i $single_end -o clean_se.fq.gz -w $cpu -j fastp.json -h fastp.html";
+            $fastp_cmd .= " -i $single_end -o clean_se.fq.gz -w $fastp_threads -j fastp.json -h fastp.html";
         }
         &execute_cmds($fastp_cmd, "fastp.ok");
 
@@ -576,12 +584,14 @@ $cmdString = "$bin_path/prepareAugusutusHints $config{'prepareAugusutusHints'} -
 &execute_cmds($cmdString, "prepareAugusutusHints.ok");
 
 # Add miniprothint hints if protein evidence exists (Phase 2.3)
-if ( $protein ) {
-    my $miniprothint_cmd = "miniprothint.py $tmp_dir/2.homolog_prediction/homolog_alignment.gff3 --workdir miniprothint_out > miniprothint_hints.gff 2> miniprothint.log";
+if ( $protein && -e "$tmp_dir/2.homolog_prediction/miniprot_raw.gff" ) {
+    my $miniprothint_cmd = "miniprothint.py $tmp_dir/2.homolog_prediction/miniprot_raw.gff --workdir miniprothint_out &> miniprothint.log";
     &execute_cmds($miniprothint_cmd, "miniprothint.ok");
-    # Merge hints
-    $cmdString = "cat hints.gff miniprothint_hints.gff > hints_combined.gff && mv hints_combined.gff hints.gff";
-    &execute_cmds($cmdString, "merge_hints.ok");
+    # miniprothint outputs hints to miniprothint_out/prothint_augustus.gff
+    if ( -s "miniprothint_out/prothint_augustus.gff" ) {
+        $cmdString = "cat hints.gff miniprothint_out/prothint_augustus.gff > hints_combined.gff && mv hints_combined.gff hints.gff";
+        &execute_cmds($cmdString, "merge_hints.ok");
+    }
 }
 
 # 4.3 进行Augustus基因预测
@@ -692,9 +702,9 @@ push @cmdString, "$bin_path/GFF3_database_validation $config{'GFF3_database_vali
 # 5.4 Optional PSAURON quality scoring (Phase 3.2)
 if ( $enable_psauron ) {
     my @psauron_cmds;
-    push @psauron_cmds, "psauron score -i geneModels.j.gff3 -g $genome -o psauron_scores.txt &> psauron.log";
-    # Use PSAURON scores as additional filtering criterion
-    &execute_cmds(@psauron_cmds, "03b.psauron.ok");
+    push @psauron_cmds, "$bin_path/gff3_to_sequences.pl --out_prefix psauron_input --only_coding_gene_sequences --only_first_isoform $genome geneModels.j.gff3 > /dev/null 2>&1";
+    push @psauron_cmds, "psauron -i psauron_input.cds.fasta -o psauron_scores.csv &> psauron.log";
+    &execute_cmds(@psauron_cmds, "04.psauron.ok");
 }
 
 # 5.6 进行可变剪接分析
@@ -780,7 +790,7 @@ my @cmdString;
 if ( $BUSCO_lineage_dataset ) {
     foreach my $BUSCO_db_path ( @BUSCO_db ) {
         my $BUSCO_db_name = $BUSCO_db{$BUSCO_db_path};
-        push @cmdString, "compleasm.py run -a $out_prefix.protein.fasta -o compleasm_OUT_GETA_$BUSCO_db_name -l $BUSCO_db_name -t $cpu &> compleasm_GETA_$BUSCO_db_name.log";
+        push @cmdString, "compleasm.py protein -p $out_prefix.protein.fasta -o compleasm_OUT_GETA_$BUSCO_db_name -l $BUSCO_db_name -t $cpu &> compleasm_GETA_$BUSCO_db_name.log";
     }
     push @cmdString, "05.compleasm.ok";
 
@@ -890,7 +900,12 @@ if ( $enable_eggnog ) {
 if ( $enable_ncrna ) {
     my @ncRNA_cmds;
     push @ncRNA_cmds, "tRNAscan-SE -o $out_prefix.tRNA.out -f $out_prefix.tRNA.structure -m $out_prefix.tRNA.stats --thread $cpu $genome &> tRNAscan.log";
-    push @ncRNA_cmds, "cmscan --cpu $cpu --tblout $out_prefix.ncRNA.tblout -E 1e-5 --noali Rfam.cm $genome > $out_prefix.ncRNA.cmscan 2> cmscan.log";
+    if ( $Rfam_db && -e $Rfam_db ) {
+        push @ncRNA_cmds, "cmscan --cpu $cpu --tblout $out_prefix.ncRNA.tblout -E 1e-5 --cut_ga --rfam --nohmmonly --noali $Rfam_db $genome > $out_prefix.ncRNA.cmscan 2> cmscan.log";
+    }
+    else {
+        print STDERR "Warning: --Rfam_db not provided or file not found. Skipping cmscan.\n";
+    }
     &execute_cmds(@ncRNA_cmds, "08.ncRNA.ok");
 }
 
@@ -1078,7 +1093,7 @@ sub detecting_dependent_softwares {
 
         # 检测EDTA (when --TE_annotator edta)
         if ( $TE_annotator eq "edta" ) {
-            $software_info = `EDTA.pl --version 2>&1`;
+            $software_info = `EDTA.pl --help 2>&1`;
             if ($software_info =~ m/EDTA/i) {
                 print STDERR "EDTA:\tOK\n";
             }
@@ -1218,8 +1233,8 @@ sub detecting_dependent_softwares {
 
     # 检测 PSAURON (optional, when --enable_psauron)
     if ( $enable_psauron ) {
-        $software_info = `psauron --version 2>&1`;
-        if ($software_info =~ m/\d+/) {
+        $software_info = `psauron -h 2>&1`;
+        if ($software_info =~ m/psauron|PSAURON|usage/i) {
             print STDERR "PSAURON:\tOK\n";
         }
         else {
@@ -1240,8 +1255,8 @@ sub detecting_dependent_softwares {
 
     # 检测 tRNAscan-SE / cmscan (optional, when --enable_ncrna)
     if ( $enable_ncrna ) {
-        $software_info = `tRNAscan-SE --version 2>&1`;
-        if ($software_info =~ m/tRNAscan-SE/) {
+        $software_info = `tRNAscan-SE -h 2>&1`;
+        if ($software_info =~ m/tRNAscan/i) {
             print STDERR "tRNAscan-SE:\tOK\n";
         }
         else {
@@ -1288,10 +1303,10 @@ Parameters:
     Enter the name of a species or class for RepeatMakser to perform a repeat sequence analysis for the genome using the HMM data of corresponding taxonomic species in the Dfam database. The file $software_dir/RepeatMasker_lineage.txt has the values that can be provided for this parameter to represent the class of species. For example, Eukaryota is for eukaryotes, Viridiplantae is for plants, Metazoa is for animals, and Fungi is for fungi. Before attempting to enter this parameter, the RepeatMasker program needed to be installed and the Dfam database needed to be configured. Note that due to its massive size, the Dfam database has been split up into nine partitions. By default, RepeatMasker only contains the zero root partition of the Dfam database, which is suitable for species such as mammals and fungi. If necessary, consider downloading the proper Dfam database partition and configuring it to RepeatMasker. For example, the 5th partition of the Dfam database is designated for Viridiplantae, while the 7th  partition is for Hymenoptera.
 
     --long_reads <string>    default: None
-    Enter a long-read transcriptome sequencing data file (FASTQ or FASTA format). Supports PacBio HiFi, PacBio CLR, and Oxford Nanopore long-read data. When long reads are provided, minimap2 is used for alignment and IsoQuant for transcript reconstruction and gene prediction. Long reads can be used alone or combined with short reads for better results.
+    Enter a long-read transcriptome sequencing data file (FASTQ or FASTA format). Supports PacBio HiFi, Nanopore cDNA, and Nanopore dRNA long-read data. When long reads are provided, minimap2 is used for alignment and IsoQuant for transcript reconstruction and gene prediction. Long reads can be used alone or combined with short reads for better results.
 
     --long_read_type <string>    default: pacbio_hifi
-    Set the type of long-read data. Accepted values are pacbio_hifi, pacbio_clr, or nanopore. This parameter optimizes minimap2 and IsoQuant alignment and analysis parameters.
+    Set the type of long-read data. Accepted values are pacbio_hifi, nanopore_cdna, or nanopore_drna. This parameter optimizes minimap2 and IsoQuant alignment and analysis parameters.
 
     --aligner <string>    default: star
     Set the short-read alignment tool. Accepted values are star or hisat2. STAR is faster and more accurate but requires more memory.
@@ -1430,11 +1445,17 @@ sub parsing_input_parameters {
     }
 
     $protein = abs_path($protein) if $protein;
+    $Rfam_db = abs_path($Rfam_db) if $Rfam_db;
 
     if ( $long_reads ) {
         my @files; foreach ( split /,/, $long_reads ) { push @files, abs_path($_); } $long_reads = join ",", @files;
     }
     $long_read_type ||= "pacbio_hifi";
+    if ( $long_reads ) {
+        unless ( $long_read_type eq "pacbio_hifi" or $long_read_type eq "nanopore_cdna" or $long_read_type eq "nanopore_drna" ) {
+            die "Error: --long_read_type must be pacbio_hifi, nanopore_cdna, or nanopore_drna. Got: $long_read_type\n";
+        }
+    }
     $aligner ||= "star";
     $TE_annotator ||= "repeatmodeler";
 
@@ -1790,6 +1811,9 @@ sub choose_config_file {
     # 覆盖%config数据
     # Update homolog_prediction to use miniprot method by default
     $homolog_prediction_method ||= "miniprot";
+    unless ( $homolog_prediction_method eq "miniprot" ) {
+        die "Error: --homolog_prediction_method currently only supports 'miniprot'. Got: '$homolog_prediction_method'\n";
+    }
     $config{"homolog_prediction"} =~ s/--method \S+/--method $homolog_prediction_method/;
 
     $optimize_augustus_method ||= 3;
