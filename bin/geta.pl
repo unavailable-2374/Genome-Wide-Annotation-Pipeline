@@ -780,7 +780,7 @@ my @cmdString;
 if ( $BUSCO_lineage_dataset ) {
     foreach my $BUSCO_db_path ( @BUSCO_db ) {
         my $BUSCO_db_name = $BUSCO_db{$BUSCO_db_path};
-        push @cmdString, "compleasm run -a $out_prefix.protein.fasta -o compleasm_OUT_GETA_$BUSCO_db_name -l $BUSCO_db_name -t $cpu &> compleasm_GETA_$BUSCO_db_name.log";
+        push @cmdString, "compleasm.py run -a $out_prefix.protein.fasta -o compleasm_OUT_GETA_$BUSCO_db_name -l $BUSCO_db_name -t $cpu &> compleasm_GETA_$BUSCO_db_name.log";
     }
     push @cmdString, "05.compleasm.ok";
 
@@ -1208,7 +1208,7 @@ sub detecting_dependent_softwares {
     }
 
     # 检测compleasm
-    $software_info = `compleasm --version 2>&1`;
+    $software_info = `compleasm.py --version 2>&1 || compleasm --version 2>&1`;
     if ($software_info =~ m/\d+\.\d+/) {
         print STDERR "compleasm:\tOK\n";
     }
