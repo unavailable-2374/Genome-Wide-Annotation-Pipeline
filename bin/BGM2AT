@@ -226,10 +226,17 @@ else {
 }
 
 # 将GFF3转换成GeneBank格式
-my @cmdString;
-push @cmdString, "gff2gbSmallDNA.pl $inputfile1 $inputfile2 $flanking_length genes.raw.gb &> gff2gbSmallDNA.raw.log";
+# gff2gbSmallDNA.pl 只接受 GTF/GFF2 格式，需先将 GFF3 转为 GTF
+my $inputfile1_gtf = &gff3_to_gtf($inputfile1, "input.filter2.gtf");
+my $onlytrain_gtf;
 if ($onlytrain_GFF3) {
-    push @cmdString, "gff2gbSmallDNA.pl $onlytrain_GFF3 $inputfile2 $flanking_length genes.all.gb &> gff2gbSmallDNA.all.log";
+    $onlytrain_gtf = &gff3_to_gtf($onlytrain_GFF3, "input.filter1.gtf");
+}
+
+my @cmdString;
+push @cmdString, "gff2gbSmallDNA.pl $inputfile1_gtf $inputfile2 $flanking_length genes.raw.gb &> gff2gbSmallDNA.raw.log";
+if ($onlytrain_GFF3) {
+    push @cmdString, "gff2gbSmallDNA.pl $onlytrain_gtf $inputfile2 $flanking_length genes.all.gb &> gff2gbSmallDNA.all.log";
 }
 
 &execute_cmds(@cmdString, "05b.BGM2AT.gff2gbSmallDNA.ok");
@@ -523,4 +530,44 @@ sub execute_cmds {
     }
 
     return 1;
+}
+
+# 将 GFF3 格式转换为 gff2gbSmallDNA.pl 可接受的 GTF 格式
+sub gff3_to_gtf {
+    my ($gff3_file, $gtf_file) = @_;
+    my $gtf_path = abs_path(".") . "/$gtf_file";
+
+    open my $IN, "<", $gff3_file or die "Error: Can not open file $gff3_file, $!\n";
+    open my $OUT, ">", $gtf_path or die "Error: Can not create file $gtf_path, $!\n";
+
+    my ($current_gene_id, $current_mRNA_id);
+    while (<$IN>) {
+        chomp;
+        next if /^#/ || /^\s*$/;
+        my @f = split /\t/;
+        next unless @f >= 9;
+        my $type = $f[2];
+        my $attr = $f[8];
+
+        if ($type eq "gene") {
+            ($current_gene_id) = $attr =~ /ID=([^;\s]+)/;
+        }
+        elsif ($type eq "mRNA" || $type eq "transcript") {
+            ($current_mRNA_id) = $attr =~ /ID=([^;\s]+)/;
+            my ($parent) = $attr =~ /Parent=([^;\s]+)/;
+            $current_gene_id = $parent if $parent;
+            $f[8] = "gene_id \"$current_gene_id\"; transcript_id \"$current_mRNA_id\";";
+            print $OUT join("\t", @f) . "\n";
+        }
+        elsif ($type eq "CDS" || $type eq "exon" || $type =~ /UTR/) {
+            my ($parent) = $attr =~ /Parent=([^;\s]+)/;
+            $f[8] = "gene_id \"$current_gene_id\"; transcript_id \"$parent\";";
+            print $OUT join("\t", @f) . "\n";
+        }
+    }
+    close $IN;
+    close $OUT;
+
+    print STDERR (localtime) . ": Converted GFF3 to GTF: $gff3_file -> $gtf_path\n";
+    return $gtf_path;
 }
