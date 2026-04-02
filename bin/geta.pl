@@ -1434,21 +1434,32 @@ sub parsing_input_parameters {
     $RM_lib = abs_path($RM_lib) if $RM_lib;
 
     if ( $pe1 && $pe2 ) {
-        my @files; foreach ( split /,/, $pe1 ) { push @files, abs_path($_); } $pe1 = join ",", @files;
-        my @files; foreach ( split /,/, $pe2 ) { push @files, abs_path($_); } $pe2 = join ",", @files;
+        my @files; foreach ( split /,/, $pe1 ) { die "Error: PE1 reads file $_ does not exist!\n" unless -e $_; push @files, abs_path($_); } $pe1 = join ",", @files;
+        my @files; foreach ( split /,/, $pe2 ) { die "Error: PE2 reads file $_ does not exist!\n" unless -e $_; push @files, abs_path($_); } $pe2 = join ",", @files;
     }
     if ( $single_end ) {
-        my @files; foreach ( split /,/, $single_end ) { push @files, abs_path($_); } $single_end = join ",", @files;
+        my @files; foreach ( split /,/, $single_end ) { die "Error: single-end reads file $_ does not exist!\n" unless -e $_; push @files, abs_path($_); } $single_end = join ",", @files;
     }
     if ( $sam ) {
-        my @files; foreach ( split /,/, $sam ) { push @files, abs_path($_); } $sam = join ",", @files;
+        my @files; foreach ( split /,/, $sam ) { die "Error: SAM file $_ does not exist!\n" unless -e $_; push @files, abs_path($_); } $sam = join ",", @files;
     }
 
-    $protein = abs_path($protein) if $protein;
-    $Rfam_db = abs_path($Rfam_db) if $Rfam_db;
+    if ( $protein ) {
+        die "Error: protein file $protein does not exist!\n" unless -e $protein;
+        $protein = abs_path($protein);
+    }
+    if ( $Rfam_db ) {
+        die "Error: Rfam database file $Rfam_db does not exist!\n" unless -e $Rfam_db;
+        $Rfam_db = abs_path($Rfam_db);
+    }
 
     if ( $long_reads ) {
-        my @files; foreach ( split /,/, $long_reads ) { push @files, abs_path($_); } $long_reads = join ",", @files;
+        my @files;
+        foreach ( split /,/, $long_reads ) {
+            die "Error: long reads file $_ does not exist!\n" unless -e $_;
+            push @files, abs_path($_);
+        }
+        $long_reads = join ",", @files;
     }
     $long_read_type ||= "pacbio_hifi";
     if ( $long_reads ) {

@@ -69,9 +69,23 @@ unless ( $species or $lib ) {
 $cpu ||= 8;
 print STDERR "本程序设置使用的CPU线程数为 $cpu，";
 my $RepeatMasker_path = `which RepeatMasker`;
+chomp($RepeatMasker_path);
+$RepeatMasker_path = abs_path($RepeatMasker_path) if -l $RepeatMasker_path;
 $RepeatMasker_path = dirname($RepeatMasker_path);
+my $NCBIBlastSearchEngine_pm = "$RepeatMasker_path/NCBIBlastSearchEngine.pm";
+unless ( -e $NCBIBlastSearchEngine_pm ) {
+    my $conda_prefix = $RepeatMasker_path;
+    $conda_prefix =~ s/\/bin\/?$//;
+    my @candidate_dirs = ("$conda_prefix/share/RepeatMasker", glob("$conda_prefix/share/RepeatMasker-*"));
+    foreach my $dir (@candidate_dirs) {
+        if ( -e "$dir/NCBIBlastSearchEngine.pm" ) {
+            $NCBIBlastSearchEngine_pm = "$dir/NCBIBlastSearchEngine.pm";
+            last;
+        }
+    }
+}
 my $rmblastn_cpu = 0;
-open IN, "$RepeatMasker_path/NCBIBlastSearchEngine.pm" or die "Can not open file $RepeatMasker_path/NCBIBlastSearchEngine.pm, $!";
+open IN, $NCBIBlastSearchEngine_pm or die "Can not open file $NCBIBlastSearchEngine_pm, $!";
 while (<IN>) {
     if ( m/-num_threads\s+(\d+)/ ) {
         $rmblastn_cpu = $1;
