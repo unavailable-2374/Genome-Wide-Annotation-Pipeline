@@ -139,7 +139,7 @@ Parameters:
 10. miniprot (version: 0.12)
 11. isoquant.py (version: 3.4.0)
 12. gffread (version: 0.12.7)
-13. TransDecoder (version: 5.7.1)
+13. TransDecoder (version: 5.7.1 or 6.0+)
 14. augustus/etraining (version: 3.5.0)
 15. diamond (version 2.1.8)
 16. hmmscan (version: 3.3.2)
@@ -1131,10 +1131,16 @@ sub detecting_dependent_softwares {
 
         $software_info = `TransDecoder.LongOrfs --version 2>&1`;
         if ($software_info =~ m/TransDecoder/i) {
-            print STDERR "TransDecoder.LongOrfs:\tOK\n";
+            print STDERR "TransDecoder:\tOK (v5.x style)\n";
         }
         else {
-            die "TransDecoder.LongOrfs:\tFailed\n\n";
+            $software_info = `TransDecoder --version 2>&1`;
+            if ($software_info =~ m/TransDecoder/i) {
+                print STDERR "TransDecoder:\tOK (v6.0+ style)\n";
+            }
+            else {
+                die "TransDecoder:\tFailed. Neither TransDecoder.LongOrfs (v5.x) nor TransDecoder (v6.0+) found in PATH.\n\n";
+            }
         }
     }
 
@@ -1409,7 +1415,7 @@ This software has been tested and successfully run on Rocky 9.2 system using the
 10. miniprot (version: 0.12)
 11. isoquant.py (version: 3.4.0)
 12. gffread (version: 0.12.7)
-13. TransDecoder (version: 5.7.1)
+13. TransDecoder (version: 5.7.1 or 6.0+)
 14. augustus/etraining (version: 3.5.0)
 15. diamond (version 2.1.8)
 16. hmmscan (version: 3.3.2)
