@@ -206,18 +206,39 @@ unless (-e "$tmp_dir/c.transdecoder.ok") {
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
+    # Detect TransDecoder commands: v5.x has them in PATH directly, v6.0 moved them to util/
+    my $td_longOrfs = "TransDecoder.LongOrfs";
+    my $td_predict = "TransDecoder.Predict";
+    my $td_gtf2gff3 = "gtf_to_alignment_gff3.pl";
+    my $td_cdna2genome = "cdna_alignment_orf_to_genome_orf.pl";
+    my $td_which = `which TransDecoder.LongOrfs 2>/dev/null`; chomp($td_which);
+    unless ( $td_which ) {
+        # v6.0: find via the unified TransDecoder wrapper
+        my $td_wrapper = `which TransDecoder 2>/dev/null`; chomp($td_wrapper);
+        if ( $td_wrapper ) {
+            $td_wrapper = abs_path($td_wrapper) if -l $td_wrapper;
+            my $td_dir = dirname($td_wrapper);
+            if ( -e "$td_dir/util/TransDecoder.LongOrfs" ) {
+                $td_longOrfs = "$td_dir/util/TransDecoder.LongOrfs";
+                $td_predict = "$td_dir/util/TransDecoder.Predict";
+                $td_gtf2gff3 = "$td_dir/util/gtf_to_alignment_gff3.pl";
+                $td_cdna2genome = "$td_dir/util/cdna_alignment_orf_to_genome_orf.pl";
+            }
+        }
+    }
+
     # TransDecoder: find long ORFs
-    $cmdString = "TransDecoder.LongOrfs -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder -G $td_genetic_code";
+    $cmdString = "$td_longOrfs -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder -G $td_genetic_code";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     # TransDecoder: predict likely coding regions
-    $cmdString = "TransDecoder.Predict -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder --single_best_only -G $td_genetic_code";
+    $cmdString = "$td_predict -t $tmp_dir/c.transdecoder/transcripts.fa -O $tmp_dir/c.transdecoder --single_best_only -G $td_genetic_code";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
     # Convert IsoQuant GTF to alignment GFF3 for TransDecoder utility
-    $cmdString = "gtf_to_alignment_gff3.pl $isoquant_gtf > $tmp_dir/c.transdecoder/transcript_alignments.gff3";
+    $cmdString = "$td_gtf2gff3 $isoquant_gtf > $tmp_dir/c.transdecoder/transcript_alignments.gff3";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
@@ -237,7 +258,7 @@ unless (-e "$tmp_dir/c.transdecoder.ok") {
         }
     }
 
-    $cmdString = "cdna_alignment_orf_to_genome_orf.pl $transdecoder_gff3 $tmp_dir/c.transdecoder/transcript_alignments.gff3 $tmp_dir/c.transdecoder/transcripts.fa > $tmp_dir/c.transdecoder/genome_based_orf.gff3";
+    $cmdString = "$td_cdna2genome $transdecoder_gff3 $tmp_dir/c.transdecoder/transcript_alignments.gff3 $tmp_dir/c.transdecoder/transcripts.fa > $tmp_dir/c.transdecoder/genome_based_orf.gff3";
     print STDERR (localtime) . ": CMD: $cmdString\n";
     system("$cmdString") == 0 or die "failed to execute: $cmdString\n";
 
@@ -1050,8 +1071,7 @@ Parameters:
 
 Dependencies:
     minimap2, samtools, isoquant.py, gffread,
-    TransDecoder.LongOrfs, TransDecoder.Predict, gtf_to_alignment_gff3.pl,
-    cdna_alignment_orf_to_genome_orf.pl
+    TransDecoder (v5.x or v6.0+)
 
 USAGE
 
